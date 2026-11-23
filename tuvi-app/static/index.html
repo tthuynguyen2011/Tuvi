@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tử Vi Đẩu Số — Lập Lá Số & Luận Giải Trọn Đời</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-seal">✦</span>
+      <div>
+        <h1>Tử Vi Đẩu Số Toàn Thư</h1>
+        <p>Lập lá số bản đồ an cung • Luận giải trọn đời • Điềm may/hung từng năm &amp; Mốc cuộc đời</p>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <button id="btn-export-docx" class="btn btn-secondary" type="button">⬇ Xuất File Word (.docx)</button>
+      <button id="btn-print" class="btn btn-outline" type="button" onclick="window.print()">🖨 In Lá Số</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="input-panel card">
+      <form id="chart-form" class="form-grid">
+        <div class="field">
+          <label for="f-name">Họ tên đương số</label>
+          <input id="f-name" type="text" value="" placeholder="Nhập họ tên đương số..." required />
+        </div>
+        <div class="field">
+          <label for="f-gender">Giới tính</label>
+          <select id="f-gender">
+            <option value="Nữ" selected>Nữ</option>
+            <option value="Nam">Nam</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-cal">Loại lịch</label>
+          <select id="f-cal">
+            <option value="solar" selected>Dương lịch</option>
+            <option value="lunar">Âm lịch</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-day">Ngày</label>
+          <input id="f-day" type="number" min="1" max="31" value="1" required />
+        </div>
+        <div class="field">
+          <label for="f-month">Tháng</label>
+          <input id="f-month" type="number" min="1" max="12" value="1" required />
+        </div>
+        <div class="field">
+          <label for="f-year">Năm sinh</label>
+          <input id="f-year" type="number" min="1900" max="2100" value="1995" required />
+        </div>
+        <div class="field">
+          <label for="f-hour">Giờ sinh</label>
+          <select id="f-hour">
+            <option value="0">Tý (23h - 01h)</option>
+            <option value="2">Sửu (01h - 03h)</option>
+            <option value="4">Dần (03h - 05h)</option>
+            <option value="6">Mão (05h - 07h)</option>
+            <option value="8" selected>Thìn (07h - 09h)</option>
+            <option value="10">Tỵ (09h - 11h)</option>
+            <option value="12">Ngọ (11h - 13h)</option>
+            <option value="14">Mùi (13h - 15h)</option>
+            <option value="16">Thân (15h - 17h)</option>
+            <option value="18">Dậu (17h - 19h)</option>
+            <option value="20">Tuất (19h - 21h)</option>
+            <option value="22">Hợi (21h - 23h)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-view-year">Năm xem hạn</label>
+          <input id="f-view-year" type="number" min="1900" max="2100" value="2026" required />
+        </div>
+        <div class="field">
+          <label for="f-num-years">Số năm luận</label>
+          <input id="f-num-years" type="number" min="1" max="85" value="15" required />
+        </div>
+        <div class="field field-btn">
+          <button type="submit" class="btn btn-primary">✦ Lập Lá Số &amp; Luận Giải</button>
+        </div>
+      </form>
+    </section>
+
+    <nav class="tabs">
+      <button class="tab active" data-tab="tab-chart">🗺 Bản Đồ Lá Số (12 Cung)</button>
+      <button class="tab" data-tab="tab-palaces">📜 Luận Giải Trọn Đời (12 Cung)</button>
+      <button class="tab" data-tab="tab-milestones">🏔 Những Mốc Quan Trọng</button>
+      <button class="tab" data-tab="tab-yearly">📅 Điềm May &amp; Hung Từng Năm</button>
+      <button class="tab" data-tab="tab-year-detail">🔍 Soi Cát Hung &amp; 12 Cung Theo Năm</button>
+    </nav>
+
+    <!-- TAB 1: CHART + SELECTED PALACE INSPECTOR -->
+    <section id="tab-chart" class="tab-content active">
+      <div class="chart-workspace">
+        <div class="chart-board-wrap card">
+          <div id="tuvi-board" class="tuvi-board">
+            <!-- 12 palaces + center 2x2 injected by JS -->
+          </div>
+          <p class="board-hint">💡 Nhấn vào bất kỳ cung nào trên lá số để xem đường Tam Hợp / Xung Chiếu và luận giải chi tiết cung đó.</p>
+        </div>
+        <aside id="palace-inspector" class="inspector card">
+          <div class="empty-state">Nhập thông tin đương số ở phía trên và bấm <strong>"Lập Lá Số &amp; Luận Giải"</strong> để hiển thị bản đồ 12 cung và bài luận chi tiết.</div>
+        </aside>
+      </div>
+
+      <div class="card cach-cuc-box">
+        <h3>✦ Tổng Quan Cách Cục &amp; Đặc Điểm Nổi Bật</h3>
+        <div id="cach-cuc-list" class="cach-cuc-grid"></div>
+      </div>
+    </section>
+
+    <!-- TAB 2: ALL 12 PALACES -->
+    <section id="tab-palaces" class="tab-content">
+      <div id="all-palaces-list" class="reading-grid"></div>
+    </section>
+
+    <!-- TAB 3: MILESTONES -->
+    <section id="tab-milestones" class="tab-content">
+      <div class="card">
+        <h3>🏔 Các Mốc Quan Trọng Trong Cuộc Đời (Quét từ 1 đến 85 tuổi)</h3>
+        <p class="sub">Hệ thống tự động lọc các năm chuyển Đại Vận, năm Đại Cát bứt phá và năm Thử Thách lớn cần phòng tránh.</p>
+        <div id="milestones-list" class="timeline"></div>
+      </div>
+    </section>
+
+    <!-- TAB 4: YEARLY -->
+    <section id="tab-yearly" class="tab-content">
+      <div id="yearly-list" class="yearly-grid"></div>
+    </section>
+
+    <!-- TAB 5: CUSTOM YEAR DETAIL (CAT HUNG & 12 PALACES) -->
+    <section id="tab-year-detail" class="tab-content">
+      <div class="card year-picker-bar">
+        <div class="yp-left">
+          <label for="f-target-year"><strong>Chọn năm muốn soi chi tiết (quá khứ hoặc tương lai):</strong></label>
+          <div class="yp-controls">
+            <button type="button" id="btn-yr-prev" class="chip">◀ Năm trước</button>
+            <input id="f-target-year" type="number" min="1900" max="2100" value="2028" />
+            <button type="button" id="btn-yr-next" class="chip">Năm sau ▶</button>
+            <button type="button" id="btn-yr-view" class="btn btn-primary" style="width:auto">🔍 Xem Cát Hung &amp; 12 Cung Năm Này</button>
+          </div>
+        </div>
+        <button type="button" id="btn-yr-apply-board" class="btn btn-secondary">🗺 Đưa sao Lưu năm này lên Bản Đồ</button>
+      </div>
+
+      <div id="year-detail-summary" class="card" style="margin-top:14px;">
+        <div class="empty-state">Lập lá số trước, sau đó chọn năm bất kỳ (ví dụ: 2024, 2028...) để xem chi tiết cát hung và biến động của từng cung trong năm đó.</div>
+      </div>
+
+      <div id="year-detail-palaces" class="reading-grid" style="margin-top:14px;"></div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
