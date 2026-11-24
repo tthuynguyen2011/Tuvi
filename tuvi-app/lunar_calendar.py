@@ -239,3 +239,111 @@ def get_hour_can_chi(day_can_idx: int, hour_chi_idx: int):
     # Ngu Thu Don: Giap/Ky -> Giap Ty (0), At/Canh -> Binh Ty (2), ...
     can_idx = ((day_can_idx % 5) * 2 + hour_chi_idx) % 10
     return CAN[can_idx], CHI[hour_chi_idx], can_idx, hour_chi_idx
+
+
+# ============================================================
+# Solar Terms (Tiet Khi) & Thai At Nap Giap / Nap Am Helpers
+# ============================================================
+
+NAP_GIAP_CAN = {
+    "Nhâm": ("Thủy", 7), "Quý": ("Thủy", 7),
+    "Bính": ("Hỏa", 9), "Đinh": ("Hỏa", 9),
+    "Giáp": ("Mộc", 11), "Ất": ("Mộc", 11),
+    "Canh": ("Kim", 13), "Tân": ("Kim", 13),
+    "Mậu": ("Thổ", 15), "Kỷ": ("Thổ", 15),
+}
+
+NAP_GIAP_CHI = {
+    "Hợi": ("Thủy", 7), "Tý": ("Thủy", 7),
+    "Tỵ": ("Hỏa", 9), "Ngọ": ("Hỏa", 9),
+    "Dần": ("Mộc", 11), "Mão": ("Mộc", 11),
+    "Thân": ("Kim", 13), "Dậu": ("Kim", 13),
+    "Sửu": ("Thổ", 15), "Mùi": ("Thổ", 15), "Thìn": ("Thổ", 15), "Tuất": ("Thổ", 15),
+}
+
+HANH_TO_THAI_AT_NUM = {
+    "Thủy": 7,
+    "Hỏa": 9,
+    "Mộc": 11,
+    "Kim": 13,
+    "Thổ": 15,
+}
+
+
+def get_solar_longitude_deg(dd: int, mm: int, yy: int, hour_24: float = 12.0, time_zone: float = 7.0) -> float:
+    """Return apparent sun longitude in degrees [0, 360) for a given local date/hour."""
+    jdn = jd_from_date(dd, mm, yy) + (hour_24 - 12.0 - time_zone) / 24.0
+    rad = sun_longitude(jdn)
+    return (rad * 180.0 / math.pi) % 360.0
+
+
+def find_solstice_jd(yy: int, is_winter: bool = True, time_zone: float = 7.0) -> int:
+    """Find the local Julian Day Number of Winter Solstice (270 deg) or Summer Solstice (90 deg) in year yy."""
+    approx_month = 12 if is_winter else 6
+    target_deg = 270.0 if is_winter else 90.0
+    jd_est = jd_from_date(21, approx_month, yy)
+    for offset in range(-5, 6):
+        jd = jd_est + offset
+        dd, mm, y2 = jd_to_date(jd)
+        lon0 = get_solar_longitude_deg(dd, mm, y2, 0.0, time_zone)
+        dd_n, mm_n, y2_n = jd_to_date(jd + 1)
+        lon1 = get_solar_longitude_deg(dd_n, mm_n, y2_n, 0.0, time_zone)
+        # Check crossing target_deg
+        d0 = (lon0 - target_deg + 180.0) % 360.0 - 180.0
+        d1 = (lon1 - target_deg + 180.0) % 360.0 - 180.0
+        if d0 <= 0 <= d1:
+            return jd
+    return jd_est
+
+
+def get_don_type(dd: int, mm: int, yy: int, hour_24: float = 12.0, time_zone: float = 7.0) -> str:
+    """Return 'Dương Độn' (after Đông Chí, before Hạ Chí) or 'Âm Độn' (after Hạ Chí, before Đông Chí)."""
+    lon = get_solar_longitude_deg(dd, mm, yy, hour_24, time_zone)
+    if 90.0 <= lon < 270.0:
+        return "Âm Độn"
+    return "Dương Độn"
+
+
+def get_first_giap_ty_after_dong_chi(dd: int, mm: int, yy: int, time_zone: float = 7.0):
+    """Find the most recent Đông Chí whose first Giáp Tý day is <= (dd, mm, yy), and inclusive day count."""
+    target_jd = jd_from_date(dd, mm, yy)
+    dc_year = yy
+    dc_jd = find_solstice_jd(dc_year, is_winter=True, time_zone=time_zone)
+    if dc_jd > target_jd:
+        dc_year -= 1
+        dc_jd = find_solstice_jd(dc_year, is_winter=True, time_zone=time_zone)
+
+    def _first_gt(start_jd: int) -> int:
+        for i in range(60):
+            cand = start_jd + i
+            if (cand + 9) % 10 == 0 and (cand + 1) % 12 == 0:
+                return cand
+        return start_jd
+
+    giap_ty_jd = _first_gt(dc_jd)
+    if giap_ty_jd > target_jd:
+        dc_year -= 1
+        dc_jd = find_solstice_jd(dc_year, is_winter=True, time_zone=time_zone)
+        giap_ty_jd = _first_gt(dc_jd)
+
+    days_inclusive = (target_jd - giap_ty_jd) + 1
+    return jd_to_date(giap_ty_jd), days_inclusive, jd_to_date(dc_jd)
+
+
+def get_thai_at_can_chi_numbers(can: str, chi: str) -> dict:
+    """Compute Thái Ất Nạp Giáp & Nạp Âm numbers (Cuốn VII, trang 490-492)."""
+    can_hanh, can_num = NAP_GIAP_CAN[can]
+    chi_hanh, chi_num = NAP_GIAP_CHI[chi]
+    nap_am_name, nap_am_hanh = NAP_AM.get((can, chi), ("Không rõ", "Thổ"))
+    nap_am_num = HANH_TO_THAI_AT_NUM[nap_am_hanh]
+    total = can_num + chi_num + nap_am_num
+    return {
+        "can": can,
+        "chi": chi,
+        "can_num": can_num,
+        "chi_num": chi_num,
+        "nap_am": nap_am_name,
+        "nap_am_hanh": nap_am_hanh,
+        "nap_am_num": nap_am_num,
+        "total": total,
+    }

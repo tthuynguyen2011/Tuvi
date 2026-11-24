@@ -72,6 +72,8 @@ function renderAll() {
   }
 }
 
+let currentYearDetail = null;
+
 async function fetchYearDetail(targetYear) {
   if (!currentData) return;
   const payload = getPayload();
@@ -86,6 +88,7 @@ async function fetchYearDetail(targetYear) {
     alert("Lỗi: " + data.error);
     return;
   }
+  currentYearDetail = data;
   renderYearDetail(data);
 }
 
@@ -121,29 +124,50 @@ function renderYearDetail(data) {
     </div>
   `;
 
-  palEl.innerHTML = data.palaces_year
+  const sortMode = document.getElementById("f-yr-sort")?.value || "month";
+  const items = [...data.palaces_year];
+  if (sortMode === "month") {
+    items.sort((a, b) => a.lunar_month - b.lunar_month);
+  }
+
+  palEl.innerHTML = items
     .map((py) => {
       const rolesHtml = py.roles.map((r) => `<span class="role-tag">${r}</span>`).join("");
       const luuHtml = py.luu_direct.length
         ? py.luu_direct.map((s) => `<span class="luu-tag">${s}</span>`).join("")
         : `<span style="font-size:11px;color:#94a3b8">Không có sao lưu nhập trực tiếp</span>`;
+      const luuXungHtml = py.luu_xung.length
+        ? py.luu_xung.map((s) => `<span class="luu-tag">${s}</span>`).join("")
+        : `<span style="font-size:11px;color:#94a3b8">Không có</span>`;
       const deltaStr = py.delta > 0 ? `+${py.delta}` : `${py.delta}`;
       return `
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
-          <h3 style="margin:0;font-size:15px">${py.palace_name} (${py.chi})</h3>
+          <h3 style="margin:0;font-size:15px">
+            <span class="month-badge">Tháng ${py.lunar_month} ÂL</span>
+            ${py.palace_name} (${py.chi})
+          </h3>
           <span class="score-pill tone-${py.trend_tone}">${py.trend} (${py.base_score} → ${py.year_score}/100, ${deltaStr})</span>
         </div>
         <div style="margin:6px 0">${rolesHtml}</div>
         <p style="font-size:12px;color:var(--muted);margin:2px 0 6px">${py.domain}</p>
-        <div style="margin-bottom:6px"><strong style="font-size:12px">Sao Lưu năm ${yr.year}:</strong> ${luuHtml}</div>
+        <div class="xung-box">
+          <div><strong>Bản cung:</strong> ${py.ban_chinh.join(", ")}</div>
+          <div><strong>Xung chiếu [${py.xung_palace}]:</strong> ${py.xung_chinh.join(", ")}</div>
+          <div><strong>Tam hợp:</strong> ${py.tam_hop.join(" • ")}</div>
+          <div style="margin-top:3px"><strong>Sao Lưu bản cung:</strong> ${luuHtml} | <strong>Lưu xung chiếu:</strong> ${luuXungHtml}</div>
+        </div>
         <div class="reading-block">
-          <h4 class="h-cat">✦ Cát khí năm ${yr.year}</h4>
+          <h4 class="h-cat">✦ Cát khí Tháng ${py.lunar_month} ÂL</h4>
           <ul>${py.cat_notes.map((x) => `<li>${mdBold(x)}</li>`).join("")}</ul>
         </div>
         <div class="reading-block">
-          <h4 class="h-hung">⚠ Hung khí / Lưu ý năm ${yr.year}</h4>
+          <h4 class="h-hung">⚠ Hung khí / Lưu ý Tháng ${py.lunar_month} ÂL</h4>
           <ul>${py.hung_notes.map((x) => `<li>${mdBold(x)}</li>`).join("")}</ul>
+        </div>
+        <div class="reading-block">
+          <h4 class="h-adv">💡 Diễn biến &amp; Lời khuyên Tháng ${py.lunar_month} ÂL</h4>
+          <p style="margin:0;font-size:13px">${mdBold(py.month_advice)}</p>
         </div>
       </div>`;
     })
@@ -446,6 +470,9 @@ document.getElementById("btn-yr-apply-board").addEventListener("click", () => {
   document.getElementById("f-view-year").value = yr;
   fetchChart();
   document.querySelector('.tab[data-tab="tab-chart"]').click();
+});
+document.getElementById("f-yr-sort").addEventListener("change", () => {
+  if (currentYearDetail) renderYearDetail(currentYearDetail);
 });
 
 // Export DOCX

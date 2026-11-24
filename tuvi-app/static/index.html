@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tử Vi Đẩu Số — Lập Lá Số & Luận Giải Trọn Đời</title>
+  <title>Tử Vi &amp; Thái Ất Thần Kinh — Cổng Huyền Học Tương Tác</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -11,16 +11,21 @@
     <div class="brand">
       <span class="brand-seal">✦</span>
       <div>
-        <h1>Tử Vi Đẩu Số Toàn Thư</h1>
-        <p>Lập lá số bản đồ an cung • Luận giải trọn đời • Điềm may/hung từng năm &amp; Mốc cuộc đời</p>
+        <h1 id="portal-title">Tử Vi Đẩu Số Toàn Thư</h1>
+        <p id="portal-subtitle">Lập lá số bản đồ an cung • Luận giải trọn đời • Điềm may/hung từng năm &amp; Mốc cuộc đời</p>
       </div>
+    </div>
+    <div class="service-switcher" role="tablist" aria-label="Chọn dịch vụ">
+      <button type="button" class="svc-btn active" data-service="tuvi">🔮 Tử Vi Đẩu Số</button>
+      <button type="button" class="svc-btn" data-service="thai-at">☯ Thái Ất Thần Kinh</button>
     </div>
     <div class="topbar-actions">
       <button id="btn-export-docx" class="btn btn-secondary" type="button">⬇ Xuất File Word (.docx)</button>
-      <button id="btn-print" class="btn btn-outline" type="button" onclick="window.print()">🖨 In Lá Số</button>
+      <button id="btn-print" class="btn btn-outline" type="button" onclick="window.print()">🖨 In</button>
     </div>
   </header>
 
+  <div id="service-tuvi" class="service-pane active">
   <main class="container">
     <section class="input-panel card">
       <form id="chart-form" class="form-grid">
@@ -142,6 +147,10 @@
             <input id="f-target-year" type="number" min="1900" max="2100" value="2028" />
             <button type="button" id="btn-yr-next" class="chip">Năm sau ▶</button>
             <button type="button" id="btn-yr-view" class="btn btn-primary" style="width:auto">🔍 Xem Cát Hung &amp; 12 Cung Năm Này</button>
+            <select id="f-yr-sort" style="padding:6px 8px;border:1px solid #cbd5e1;border-radius:5px;font-size:12px;font-weight:600;">
+              <option value="month" selected>Sắp xếp: Tháng 1 → 12 ÂL</option>
+              <option value="palace">Sắp xếp: 12 Cung Chính</option>
+            </select>
           </div>
         </div>
         <button type="button" id="btn-yr-apply-board" class="btn btn-secondary">🗺 Đưa sao Lưu năm này lên Bản Đồ</button>
@@ -154,7 +163,165 @@
       <div id="year-detail-palaces" class="reading-grid" style="margin-top:14px;"></div>
     </section>
   </main>
+  </div><!-- /#service-tuvi -->
+
+  <!-- ==================== SERVICE 2: THAI AT THAN KINH ==================== -->
+  <div id="service-thai-at" class="service-pane">
+    <main class="container">
+      <div class="ta-mode-bar card">
+        <button type="button" class="ta-mode-btn active" data-ta-mode="divination">🔮 Gieo Quẻ Hỏi Việc Tức Thời (72 Khối Âm/Dương)</button>
+        <button type="button" class="ta-mode-btn" data-ta-mode="nhan_menh">📜 Thái Ất Nhân Mệnh (Kể Ngày &amp; Vận Hạn)</button>
+      </div>
+
+      <!-- FORM 1: GIEO QUE HOI VIEC TUC THOI -->
+      <section id="ta-form-divination-wrap" class="input-panel card">
+        <form id="ta-divination-form" class="form-grid">
+          <div class="field" style="grid-column: span 2;">
+            <label for="ta-question">Câu hỏi / Việc muốn xin quẻ</label>
+            <input id="ta-question" type="text" placeholder="Ví dụ: Có nên ký hợp đồng hợp tác tuần này không?" />
+          </div>
+          <div class="field">
+            <label for="ta-topic">Chủ đề</label>
+            <select id="ta-topic">
+              <option value="chung">Tổng quát / Vận khí</option>
+              <option value="cong_danh">Công danh / Sự nghiệp</option>
+              <option value="tai_loc">Kinh doanh / Tài lộc</option>
+              <option value="tinh_cam">Hôn nhân / Gia đạo</option>
+              <option value="suc_khoe">Sức khỏe / Bình an</option>
+              <option value="xuat_hanh">Xuất hành / Mưu sự</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="ta-ke-mode">Cấp độ Kế</label>
+            <select id="ta-ke-mode">
+              <option value="thoi_ke" selected>Thời Kế (Theo Giờ - 72 Khối)</option>
+              <option value="nhat_ke">Nhật Kế (Theo Ngày)</option>
+              <option value="nguyet_ke">Nguyệt Kế (Theo Tháng)</option>
+              <option value="tue_ke">Tuế Kế (Theo Năm)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="ta-day">Ngày (DL)</label>
+            <input id="ta-day" type="number" min="1" max="31" required />
+          </div>
+          <div class="field">
+            <label for="ta-month">Tháng (DL)</label>
+            <input id="ta-month" type="number" min="1" max="12" required />
+          </div>
+          <div class="field">
+            <label for="ta-year">Năm (DL)</label>
+            <input id="ta-year" type="number" min="1900" max="2100" required />
+          </div>
+          <div class="field">
+            <label for="ta-hour">Giờ gieo quẻ</label>
+            <select id="ta-hour">
+              <option value="0">Tý (23h - 01h)</option>
+              <option value="2">Sửu (01h - 03h)</option>
+              <option value="4">Dần (03h - 05h)</option>
+              <option value="6">Mão (05h - 07h)</option>
+              <option value="8">Thìn (07h - 09h)</option>
+              <option value="10">Tỵ (09h - 11h)</option>
+              <option value="12">Ngọ (11h - 13h)</option>
+              <option value="14">Mùi (13h - 15h)</option>
+              <option value="16">Thân (15h - 17h)</option>
+              <option value="18">Dậu (17h - 19h)</option>
+              <option value="20">Tuất (19h - 21h)</option>
+              <option value="22">Hợi (21h - 23h)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="ta-birth-year">Năm sinh người hỏi (tùy chọn)</label>
+            <input id="ta-birth-year" type="number" min="1900" max="2100" placeholder="VD: 1995" />
+          </div>
+          <div class="field field-btn" style="display:flex;gap:8px;align-items:flex-end;">
+            <button type="button" id="ta-btn-now" class="btn btn-light" style="width:auto;white-space:nowrap;">⏱ Giờ hiện tại</button>
+            <button type="submit" class="btn btn-primary">☯ Gieo Quẻ &amp; Luận Giải</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- FORM 2: THAI AT NHAN MENH -->
+      <section id="ta-form-menh-wrap" class="input-panel card" style="display:none;">
+        <form id="ta-menh-form" class="form-grid">
+          <div class="field">
+            <label for="tam-name">Họ tên đương số</label>
+            <input id="tam-name" type="text" placeholder="Nhập họ tên..." required />
+          </div>
+          <div class="field">
+            <label for="tam-gender">Giới tính</label>
+            <select id="tam-gender">
+              <option value="Nữ" selected>Nữ</option>
+              <option value="Nam">Nam</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="tam-cal">Loại lịch</label>
+            <select id="tam-cal">
+              <option value="solar" selected>Dương lịch</option>
+              <option value="lunar">Âm lịch</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="tam-day">Ngày sinh</label>
+            <input id="tam-day" type="number" min="1" max="31" value="1" required />
+          </div>
+          <div class="field">
+            <label for="tam-month">Tháng sinh</label>
+            <input id="tam-month" type="number" min="1" max="12" value="1" required />
+          </div>
+          <div class="field">
+            <label for="tam-year">Năm sinh</label>
+            <input id="tam-year" type="number" min="1900" max="2100" value="1995" required />
+          </div>
+          <div class="field">
+            <label for="tam-hour">Giờ sinh</label>
+            <select id="tam-hour">
+              <option value="0">Tý (23h - 01h)</option>
+              <option value="2">Sửu (01h - 03h)</option>
+              <option value="4">Dần (03h - 05h)</option>
+              <option value="6">Mão (05h - 07h)</option>
+              <option value="8" selected>Thìn (07h - 09h)</option>
+              <option value="10">Tỵ (09h - 11h)</option>
+              <option value="12">Ngọ (11h - 13h)</option>
+              <option value="14">Mùi (13h - 15h)</option>
+              <option value="16">Thân (15h - 17h)</option>
+              <option value="18">Dậu (17h - 19h)</option>
+              <option value="20">Tuất (19h - 21h)</option>
+              <option value="22">Hợi (21h - 23h)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="tam-view-year">Năm xem vận hạn</label>
+            <input id="tam-view-year" type="number" min="1900" max="2100" value="2026" required />
+          </div>
+          <div class="field field-btn">
+            <button type="submit" class="btn btn-primary">📜 Lập Quẻ Ất Nhân Mệnh</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- WORKSPACE: 5x5 BOARD + INTERACTIVE CONSULTATION -->
+      <div class="chart-workspace" style="margin-top:14px;">
+        <div class="chart-board-wrap card">
+          <div id="thai-at-board" class="thai-at-board">
+            <div class="empty-state" style="grid-column:1/-1;grid-row:1/-1;">
+              Chọn chế độ và bấm <strong>Gieo Quẻ</strong> hoặc <strong>Lập Quẻ Nhân Mệnh</strong> để hiển thị Bàn 16 Cung Thái Ất.
+            </div>
+          </div>
+          <p class="board-hint">💡 Nhấn vào bất kỳ cung nào trên bàn 5×5 để xem chi tiết Ngũ Hành, Khí, và các sao đang đóng tại cung đó.</p>
+        </div>
+
+        <aside id="thai-at-inspector" class="inspector card">
+          <div class="empty-state">Kết quả luận giải tương tác và hỏi đáp làm rõ ngữ cảnh sẽ hiển thị tại đây.</div>
+        </aside>
+      </div>
+
+      <!-- INTERACTIVE Q&A & DETAIL REPORT -->
+      <div id="thai-at-consult-panel" class="card" style="margin-top:14px; display:none;"></div>
+    </main>
+  </div><!-- /#service-thai-at -->
 
   <script src="app.js"></script>
+  <script src="thai-at.js"></script>
 </body>
 </html>

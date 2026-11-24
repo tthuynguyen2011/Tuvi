@@ -3,7 +3,7 @@ Rule-based Tu Vi Interpretation Engine.
 Synthesizes lifetime palace readings, yearly lucky/unlucky omens (Diem May / Diem Hung),
 and major life milestones grounded in the reference Tu Vi texts.
 """
-from lunar_calendar import NAP_AM, get_year_can_chi
+from lunar_calendar import NAP_AM, get_year_can_chi, hour_to_chi_index
 from tuvi_engine import (
     BRIGHTNESS_FULL, SINH, KHAC, get_luu_nien_stars, get_sinh_khac
 )
@@ -630,6 +630,10 @@ def analyze_palaces_for_year(chart, target_year: int):
     dv_chi = year_summary["dai_van"]["chi"] if year_summary["dai_van"] else None
     dv_idx = next((p["chi_idx"] for p in palaces if p["chi"] == dv_chi), None)
 
+    # Nguyet han (Thang 1..12 AL) cho target_year
+    h_chi_idx = hour_to_chi_index(info["hour_24"])
+    thang1_idx = (th_idx - (info["l_month"] - 1) + h_chi_idx) % 12
+
     order_names = [
         "MỆNH", "TÀI BẠCH", "QUAN LỘC", "PHU THÊ", "PHÚC ĐỨC",
         "ĐIỀN TRẠCH", "TẬT ÁCH", "TỬ TỨC", "THIÊN DI", "PHỤ MẪU", "HUYNH ĐỆ", "NÔ BỘC"
@@ -638,8 +642,12 @@ def analyze_palaces_for_year(chart, target_year: int):
     palaces_year = []
     for i in range(12):
         p = palaces[i]
+        lunar_month = ((i - thang1_idx) % 12) + 1
         base_score = _score_palace(palaces, i)
         rel = _related_indices(i)
+        opp_p = palaces[rel["xung_chieu"]]
+        th1_p = palaces[rel["tam_hop"][0]]
+        th2_p = palaces[rel["tam_hop"][1]]
         hoi_set = {rel["xung_chieu"], rel["tam_hop"][0], rel["tam_hop"][1]}
 
         roles = []
@@ -651,53 +659,94 @@ def analyze_palaces_for_year(chart, target_year: int):
             roles.append("Lưu Thái Tuế")
 
         luu_direct = [lname for pos, lname in luu_stars if pos == i]
+        luu_xung = [lname for pos, lname in luu_stars if pos == rel["xung_chieu"]]
         luu_hoi = [f"{lname} ({palaces[pos]['chi']})" for pos, lname in luu_stars if pos in hoi_set]
+
+        # Chinh tinh ban cung & xung chieu
+        ban_chinh = [f"{s['name']} ({s['brightness_full']})" for s in p["chinh_tinh"]]
+        xung_chinh = [f"{s['name']} ({s['brightness_full']})" for s in opp_p["chinh_tinh"]]
+
+        # Cat/Hung co dinh tai cung xung chieu (quan trong khi soi cung xung cat)
+        xung_cat_fixed = [
+            s["name"] for s in opp_p["cat_tinh"]
+            if not s["is_luu"] and s["name"] in ("Lộc Tồn", "Hóa Lộc", "Hóa Quyền", "Hóa Khoa", "Thiên Khôi", "Thiên Việt", "Tả Phụ", "Hữu Bật", "Thiên Mã", "Ân Quang", "Thiên Quý")
+        ]
+        xung_hung_fixed = [
+            s["name"] for s in opp_p["sat_tinh"]
+            if not s["is_luu"] and s["name"] in ("Địa Không", "Địa Kiếp", "Kình Dương", "Đà La", "Hỏa Tinh", "Linh Tinh", "Hóa Kỵ", "Thái Tuế", "Tang Môn", "Bạch Hổ", "Thiên Hình")
+        ]
 
         delta = 0
         cat_notes = []
         hung_notes = []
 
         if i == th_idx:
-            cat_notes.append(f"Cung này là **Tiểu Hạn** của năm {target_year}: mọi sự kiện trong năm xoay quanh phương diện **{p['display_name']}**.")
+            cat_notes.append(f"Cung này là **Tiểu Hạn** của năm {target_year}: mọi sự kiện trọng tâm trong năm đều xoay quanh phương diện **{p['display_name']}**.")
         if i == dv_idx:
             cat_notes.append(f"Đang nằm trong **Đại Vận {year_summary['dai_van']['tuoi_range']} tuổi**, chịu ảnh hưởng nền tảng suốt 10 năm.")
+
+        if xung_chinh:
+            cat_notes.append(f"Cung xung chiếu **[{opp_p['display_name']} - {opp_p['chi']}]** có {', '.join(xung_chinh)} chiếu thẳng về.")
+        if xung_cat_fixed:
+            delta += min(4, len(xung_cat_fixed) * 2)
+            cat_notes.append(f"Cát tinh từ cung xung chiếu ({opp_p['chi']}): **{', '.join(xung_cat_fixed)}** hỗ trợ mạnh trong tháng {lunar_month} ÂL.")
+        if xung_hung_fixed:
+            delta -= min(4, len(xung_hung_fixed) * 2)
+            hung_notes.append(f"Sát tinh từ cung xung chiếu ({opp_p['chi']}): **{', '.join(xung_hung_fixed)}** chiếu sang, cần lưu ý va chạm hoặc trở ngại.")
 
         for lname in luu_direct:
             kind, desc = LUU_STAR_PALACE_EFFECT.get(lname, ("cat", ""))
             if kind == "cat":
                 delta += 6
-                cat_notes.append(f"**{lname}** nhập bản cung: {desc}")
+                cat_notes.append(f"**{lname}** nhập bản cung trong tháng {lunar_month} ÂL: {desc}")
             else:
                 delta -= 5
-                hung_notes.append(f"**{lname}** nhập bản cung: {desc}")
+                hung_notes.append(f"**{lname}** nhập bản cung trong tháng {lunar_month} ÂL: {desc}")
+
+        for lname in luu_xung:
+            kind, _ = LUU_STAR_PALACE_EFFECT.get(lname, ("cat", ""))
+            if kind == "cat":
+                delta += 3
+                cat_notes.append(f"**{lname}** từ cung xung chiếu ({opp_p['chi']}) chiếu thẳng vào bản cung.")
+            else:
+                delta -= 3
+                hung_notes.append(f"**{lname}** từ cung xung chiếu ({opp_p['chi']}) xung phá sang bản cung.")
 
         good_hoi = [x for x in luu_hoi if any(k in x for k in ("Lộc Tồn", "Thiên Mã", "Đào Hoa", "Hồng Loan", "Thiên Hỷ"))]
         bad_hoi = [x for x in luu_hoi if any(k in x for k in ("Kình Dương", "Đà La", "Tang Môn", "Bạch Hổ", "Thiên Khốc", "Thiên Hư", "Thái Tuế"))]
 
         if good_hoi:
-            delta += min(8, len(good_hoi) * 2)
-            cat_notes.append(f"Tam hợp / Xung chiếu có cát tinh lưu niên trợ lực: {', '.join(good_hoi)}.")
+            delta += min(6, len(good_hoi) * 2)
+            cat_notes.append(f"Tam hợp hội chiếu cát tinh lưu niên: {', '.join(good_hoi)}.")
         if bad_hoi:
-            delta -= min(8, len(bad_hoi) * 2)
-            hung_notes.append(f"Tam hợp / Xung chiếu có sao lưu gây áp lực: {', '.join(bad_hoi)}.")
+            delta -= min(6, len(bad_hoi) * 2)
+            hung_notes.append(f"Tam hợp hội chiếu sao lưu gây áp lực: {', '.join(bad_hoi)}.")
 
         year_score = max(12, min(98, base_score + delta))
         if delta >= 4:
             trend = "Khởi sắc (+)"
             trend_tone = "cat"
+            month_advice = f"Tháng {lunar_month} ÂL thuận lợi cho phương diện {p['display_name'].lower()}; nên chủ động triển khai việc quan trọng."
         elif delta <= -4:
             trend = "Áp lực (-)"
             trend_tone = "warn"
+            month_advice = f"Tháng {lunar_month} ÂL dễ phát sinh áp lực ở cung {p['display_name']}; ưu tiên giữ ổn định, tránh nóng vội hay tranh cãi."
         else:
             trend = "Ổn định"
             trend_tone = "neutral"
+            month_advice = f"Tháng {lunar_month} ÂL diễn biến hài hòa, giữ nhịp độ bình thường ở phương diện {p['display_name'].lower()}."
 
         palaces_year.append({
             "chi_idx": i,
             "chi": p["chi"],
+            "lunar_month": lunar_month,
             "palace_name": p["display_name"],
             "base_name": p["name"],
             "domain": PALACE_DOMAIN.get(p["name"], ""),
+            "ban_chinh": ban_chinh or ["Vô Chính Diệu"],
+            "xung_palace": f"{opp_p['display_name']} ({opp_p['chi']})",
+            "xung_chinh": xung_chinh or ["Vô Chính Diệu"],
+            "tam_hop": [f"{th1_p['display_name']} ({th1_p['chi']})", f"{th2_p['display_name']} ({th2_p['chi']})"],
             "roles": roles,
             "base_score": base_score,
             "year_score": year_score,
@@ -705,8 +754,10 @@ def analyze_palaces_for_year(chart, target_year: int):
             "trend": trend,
             "trend_tone": trend_tone,
             "luu_direct": luu_direct,
+            "luu_xung": luu_xung,
             "cat_notes": cat_notes or ["Không có biến động xấu; giữ trạng thái ổn định theo lá số gốc."],
             "hung_notes": hung_notes or ["Không có hung tinh lưu niên xung phá trực tiếp tại cung này."],
+            "month_advice": month_advice,
         })
 
     palaces_year.sort(key=lambda x: order_names.index(x["base_name"]))

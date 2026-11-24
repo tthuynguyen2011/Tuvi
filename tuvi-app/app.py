@@ -10,6 +10,9 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from tuvi_engine import build_chart
 from tuvi_analyzer import analyze_full_report, analyze_palaces_for_year
 from docx_exporter import export_to_docx_bytes
+from thai_at_engine import build_divination_chart, build_nhan_menh_chart
+from thai_at_analyzer import analyze_divination, analyze_nhan_menh
+from thai_at_exporter import export_thai_at_to_docx_bytes
 
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 
@@ -34,6 +37,9 @@ class TuViHandler(SimpleHTTPRequestHandler):
     def do_POST(self):
         try:
             payload = self._read_json()
+            if self.path.startswith("/api/thai-at/"):
+                return self._handle_thai_at(payload)
+
             name = payload.get("name", "Đương Số").strip() or "Đương Số"
             gender = payload.get("gender", "Nữ")
             year = int(payload.get("year", 1989))
@@ -73,6 +79,71 @@ class TuViHandler(SimpleHTTPRequestHandler):
                 self._send_json({"error": "Not found"}, status=404)
         except Exception as exc:
             self._send_json({"error": str(exc)}, status=500)
+
+    def _handle_thai_at(self, payload):
+        mode = payload.get("mode", "divination")
+        if self.path == "/api/thai-at/cast":
+            if mode == "nhan_menh":
+                chart = build_nhan_menh_chart(
+                    name=(payload.get("name") or "Đương Số").strip(),
+                    gender=payload.get("gender", "Nữ"),
+                    dd=int(payload.get("day", 1)),
+                    mm=int(payload.get("month", 1)),
+                    yy=int(payload.get("year", 1995)),
+                    hour_24=int(payload.get("hour_24", 8)),
+                    is_lunar=bool(payload.get("is_lunar", False)),
+                    is_leap=bool(payload.get("is_leap", False)),
+                    view_year=int(payload.get("view_year", 2026)),
+                )
+                analysis = analyze_nhan_menh(chart)
+            else:
+                q_by = payload.get("querent_birth_year")
+                chart = build_divination_chart(
+                    dd=int(payload.get("day", 23)),
+                    mm=int(payload.get("month", 11)),
+                    yy=int(payload.get("year", 2026)),
+                    hour_24=int(payload.get("hour_24", 11)),
+                    ke_mode=payload.get("ke_mode", "thoi_ke"),
+                    question=(payload.get("question") or "").strip(),
+                    topic=payload.get("topic", "chung"),
+                    querent_birth_year=int(q_by) if q_by else None,
+                )
+                analysis = analyze_divination(
+                    chart,
+                    stance=payload.get("stance", "auto"),
+                    urgency=payload.get("urgency", "binh_thuong"),
+                    extra_context=(payload.get("extra_context") or "").strip(),
+                )
+            self._send_json({"chart": chart, "analysis": analysis})
+        elif self.path == "/api/thai-at/consult":
+            chart = payload.get("chart")
+            if not chart:
+                return self._send_json({"error": "Thiếu dữ liệu quẻ"}, status=400)
+            analysis = analyze_divination(
+                chart,
+                stance=payload.get("stance", "auto"),
+                urgency=payload.get("urgency", "binh_thuong"),
+                extra_context=(payload.get("extra_context") or "").strip(),
+            )
+            self._send_json({"analysis": analysis})
+        elif self.path == "/api/thai-at/export-docx":
+            chart = payload.get("chart")
+            analysis = payload.get("analysis")
+            if not chart or not analysis:
+                return self._send_json({"error": "Thiếu dữ liệu xuất báo cáo"}, status=400)
+            docx_bytes = export_thai_at_to_docx_bytes(chart, analysis)
+            safe_name = urllib.parse.quote("Que_Thai_At_Than_Kinh.docx")
+            self.send_response(200)
+            self.send_header(
+                "Content-Type",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            )
+            self.send_header("Content-Disposition", f"attachment; filename*=UTF-8''{safe_name}")
+            self.send_header("Content-Length", str(len(docx_bytes)))
+            self.end_headers()
+            self.wfile.write(docx_bytes)
+        else:
+            self._send_json({"error": "Not found"}, status=404)
 
 
 def main():
