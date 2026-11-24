@@ -1,0 +1,8 @@
+node_modules
+.next
+tests/golden.json
+Dockerfile
+out
+.dockerignore
+*.md
+.git

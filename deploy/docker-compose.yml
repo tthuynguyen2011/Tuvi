@@ -1,0 +1,20 @@
+# Portable stack for a fresh server with Docker and free ports 80/443.
+# Caddy serves the static build and obtains a Let's Encrypt certificate automatically.
+#   cd deploy && DOMAIN=tuvi.example.com docker compose up -d --build
+services:
+  tuvi:
+    build: ../web
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN to your subdomain, e.g. DOMAIN=tuvi.example.com}
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

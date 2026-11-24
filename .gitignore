@@ -5,3 +5,10 @@ __pycache__/
 *.docx
 .DS_Store
 Thumbs.db
+
+# Next.js app
+web/node_modules/
+web/.next/
+web/tests/golden.json
+web/next-env.d.ts
+deploy/.env
