@@ -367,6 +367,34 @@ def analyze_palace(chart, chi_idx: int):
     if any(s["name"] in ("Địa Không", "Địa Kiếp", "Đại Hao", "Phá Quân") for s in p["chinh_tinh"] + p["sat_tinh"]):
         advice.append("Quản trị tài chính chặt chẽ, tránh đầu tư lướt sóng hoặc cho vay thiếu đảm bảo.")
 
+    # Tổng hợp diễn giải bằng lời văn chi tiết cho cung
+    info = chart["info"]
+    chinh_names = ", ".join(f"{s['name']} ({s['brightness_full']})" for s in chinh_list) if chinh_list else "Vô Chính Diệu"
+    rel_cung_menh = get_sinh_khac(p["can_hanh"], info["ban_menh_hanh"])
+    if is_vcd:
+        chinh_phrase = f"là cung Vô Chính Diệu, mượn chính tinh từ cung xung chiếu {opp['display_name']} ({opp['chi']}) gồm {chinh_names}"
+    else:
+        chinh_phrase = f"có chính tinh {chinh_names} tọa thủ"
+
+    tt_phrase = ""
+    if p["tuan"] or p["triet"]:
+        tt = "/".join(x for x, f in [("Tuần", p["tuan"]), ("Triệt", p["triet"])] if f)
+        tt_phrase = (
+            f" Nhờ có {tt} án ngữ nên cung Vô Chính Diệu được giữ thế ổn định."
+            if is_vcd else
+            f" Có {tt} đóng tại cung nên giai đoạn tiền vận cần kiên nhẫn rèn giũa, hậu vận mới phát huy rõ."
+        )
+
+    detailed_narrative = (
+        f"Cung {p['display_name']} đóng tại {p['chi']} (hành {p['can_hanh']}, quan hệ {rel_cung_menh} với Bản Mệnh {info['ban_menh_hanh']}), "
+        f"chủ về {PALACE_DOMAIN.get(p['name'], '').lower()}. "
+        f"Cung này {chinh_phrase}.{tt_phrase} "
+        f"Tổng điểm đánh giá đạt {score}/100 ({rating}). "
+        + (f"Nổi bật có cát tinh hội chiếu ({', '.join(dict.fromkeys(hoi_cat[:4]))}) giúp tăng cường thuận lợi. " if hoi_cat else "")
+        + (f"Lưu ý thêm các sao gây áp lực ({', '.join(dict.fromkeys(hoi_hung[:4]))}) để chủ động điều tiết và hóa giải. " if hoi_hung else "")
+        + advice[0]
+    )
+
     return {
         "chi_idx": chi_idx,
         "chi": p["chi"],
@@ -379,6 +407,7 @@ def analyze_palace(chart, chi_idx: int):
         "cat_points": cat_points or ["Bình ổn, không có xung phá lớn."],
         "hung_points": hung_points or ["Không có sát tinh trọng yếu tọa thủ trực tiếp."],
         "advice": advice,
+        "detailed_narrative": detailed_narrative,
     }
 
 
@@ -595,11 +624,85 @@ def analyze_full_report(chart, start_year: int = 2026, num_years: int = 15):
                 "diem_hung": y_res["diem_hung"][:2],
             })
 
+    overall_summary = _build_overall_summary(chart, cach_cuc, palace_readings_ordered, yearly_readings)
+
     return {
         "cach_cuc": [{"name": n, "type": t, "desc": d} for n, t, d in cach_cuc],
+        "overall_summary": overall_summary,
         "palace_readings": palace_readings_ordered,
         "yearly_readings": yearly_readings,
         "milestones": milestones,
+    }
+
+
+def _build_overall_summary(chart, cach_cuc, palace_readings_ordered, yearly_readings) -> dict:
+    """Tổng hợp bài luận chi tiết trọn đời & định hướng thực tế cho đương số."""
+    info = chart["info"]
+    palaces = chart["palaces"]
+    by_name = {palaces[pr["chi_idx"]]["name"]: pr for pr in palace_readings_ordered}
+
+    # 1. Âm Dương & Cục - Mệnh
+    am_duong_note = (
+        f"Đương số thuộc **{info['am_duong']}**, {info['am_duong_ly']} "
+        f"(Âm Dương {'thuận hòa, dễ thích nghi hoàn cảnh' if 'Thuận' in info['am_duong_ly'] else 'nghịch lý, cần nỗ lực tự thân nhiều hơn nhưng càng rèn giũa càng bản lĩnh'})."
+    )
+    cuc_name = info.get("cuc_name", "")
+    cuc_hanh = info.get("cuc_hanh", "Thổ")
+    cuc_menh_rel = get_sinh_khac(cuc_hanh, info["ban_menh_hanh"])
+    if cuc_menh_rel == "Sinh":
+        cm_note = f"Cục ({cuc_name}) sinh cho Bản Mệnh ({info['ban_menh']}): được hoàn cảnh và thời vận nâng đỡ."
+    elif cuc_menh_rel == "Bình Hòa":
+        cm_note = f"Cục ({cuc_name}) và Bản Mệnh ({info['ban_menh']}) bình hòa: nền tảng ổn định, tự chủ."
+    else:
+        cm_note = f"Cục ({cuc_name}) và Bản Mệnh ({info['ban_menh']}) có thế rèn giũa ({cuc_menh_rel}): thành tựu đến từ sự kiên trì và tích lũy bền bỉ."
+
+    # 2. Thân cư đâu
+    than_p = next((p for p in palaces if p.get("is_than")), None)
+    than_map = {
+        "MỆNH": "Thân Mệnh đồng cung: tính cách nhất quán, tự lực quyết định vận mệnh từ sớm đến hậu vận.",
+        "PHÚC ĐỨC": "Thân cư Phúc Đức: hậu vận coi trọng đời sống tinh thần, gia tộc, làm phúc tích đức càng về sau càng an nhiên.",
+        "QUAN LỘC": "Thân cư Quan Lộc: hậu vận gắn liền với sự nghiệp, công danh và giá trị đóng góp trong công việc.",
+        "THIÊN DI": "Thân cư Thiên Di: càng đi xa, mở rộng giao tế hoặc thay đổi môi trường càng dễ phát triển và gặp quý nhân.",
+        "TÀI BẠCH": "Thân cư Tài Bạch: hậu vận xoay quanh tài chính, kinh doanh và quản trị tài sản.",
+        "PHU THÊ": "Thân cư Phu Thê: hậu vận gắn bó mật thiết với gia đạo và sự đồng hành của người bạn đời.",
+    }
+    than_note = than_map.get(than_p["name"], "") if than_p else ""
+
+    # 3. Đánh giá 4 trụ cột: Mệnh, Quan, Tài, Phu Thê
+    pillars = []
+    for pname, label in [
+        ("MỆNH", "Bản Mệnh & Tính Cách"),
+        ("QUAN LỘC", "Sự Nghiệp (Quan Lộc)"),
+        ("TÀI BẠCH", "Tài Chính (Tài Bạch)"),
+        ("PHU THÊ", "Gia Đạo (Phu Thê)"),
+        ("PHÚC ĐỨC", "Phúc Phần (Phúc Đức)"),
+        ("TẬT ÁCH", "Sức Khỏe (Tật Ách)"),
+    ]:
+        pr = by_name.get(pname)
+        if pr:
+            pillars.append(f"**{label}** ({pr['score']}/100 — {pr['rating']}): {pr['detailed_narrative']}")
+
+    # 4. Năm xem hạn đầu tiên
+    first_yr = yearly_readings[0] if yearly_readings else None
+    yr_note = ""
+    if first_yr:
+        yr_note = (
+            f"Trong năm xem hạn **{first_yr['year']} ({first_yr['year_cc']})** ở tuổi {first_yr['tuoi_mu']} (âm lịch), "
+            f"đương số đạt mức **{first_yr['score']}/100 ({first_yr['verdict']})**, đang ở Đại Vận {first_yr['dai_van']['tuoi_range']} tuổi. "
+            + (first_yr["advice"][0] if first_yr["advice"] else "")
+        )
+
+    cach_names = ", ".join(n for n, _, _ in cach_cuc) if cach_cuc else "Bình hòa ổn định"
+    narrative = (
+        f"Lá số của đương số **{info['name']}** ({info['gender']}, sinh năm {info['l_year']} {info['year_cc']}) "
+        f"nổi bật với cách cục: **{cach_names}**. {am_duong_note} {cm_note} {than_note}"
+    )
+
+    return {
+        "narrative": narrative,
+        "pillars": pillars,
+        "year_outlook": yr_note,
+        "disclaimer": "Lưu ý: Luận giải Tử Vi phản ánh xu hướng khí số bẩm sinh và vận hạn tham khảo; nỗ lực rèn luyện, đạo đức và quyết định thực tế của đương số vẫn là yếu tố then chốt.",
     }
 
 

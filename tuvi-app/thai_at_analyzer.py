@@ -6,7 +6,44 @@ Implements interpretation rules from Cuốn II, IV, V, VII:
 - Interactive Q&A refinement (Chủ vs Khách stance, urgency, topic-specific advice)
 - Thái Ất Nhân Mệnh analysis (Cuốn VII)
 """
-from thai_at_engine import PALACES_16_CLOCKWISE, CUNG_NUMBER_MAP, PALACE_HANH, PALACE_KHI, PALACE_DIRECTION
+import re
+from thai_at_engine import (
+    PALACES_16_CLOCKWISE,
+    CUNG_NUMBER_MAP,
+    PALACE_HANH,
+    PALACE_KHI,
+    PALACE_DIRECTION,
+    build_divination_chart,
+)
+import lunar_calendar as lc
+
+# Bộ lọc ngôn ngữ thiếu chuẩn mực / thô tục / xúc phạm
+_INAPPROPRIATE_PATTERNS = [
+    r"\bđ[ụù]\b", r"\bđ[ịị]t\b", r"\bđ[éè]o\b", r"\bl[ồô]n\b", r"\bc[ặă]c\b",
+    r"\bch[óo]\s*(đ[ẻe]|má|ch[ếe]t)", r"\bm[ẹe]\s*m[àa]y", r"\bcon\s*c[ặă]c",
+    r"\bv[ãa]i\s*(l[ồô]n|c[ặă]c|đ[áa]i)", r"\bngu\s*(v[ãa]i|nh[ưư]\s*b[òo]|ng[ốo]c)",
+    r"\bkh[ốo]n\s*n[ạa]n", r"\bm[ấa]t\s*d[ạa]y", r"\bđ[ồo]\s*r[áa]c", r"\bc[úu]t\b",
+    r"\bfuck\b", r"\bshit\b", r"\bbitch\b", r"\basshole\b", r"\bdamn\b",
+]
+_INAPPROPRIATE_RE = re.compile("|".join(_INAPPROPRIATE_PATTERNS), re.IGNORECASE)
+
+
+def check_querent_language(text: str) -> dict:
+    """Kiểm tra ngôn ngữ chuẩn mực của người gieo quẻ.
+    Nếu phát hiện ngôn từ thô tục, xúc phạm hoặc thiếu chuẩn mực -> từ chối và dừng tương tác.
+    """
+    if not text or not text.strip():
+        return {"ok": True, "reason": ""}
+    if _INAPPROPRIATE_RE.search(text):
+        return {
+            "ok": False,
+            "reason": (
+                "Hệ thống xin phép từ chối và dừng tương tác vì nội dung câu hỏi có sử dụng ngôn ngữ chưa chuẩn mực. "
+                "Theo tinh thần Thái Ất Thần Kinh, việc gieo quẻ cần sự thành tâm, tôn trọng và ngôn từ đúng đắn. "
+                "Vui lòng điều chỉnh lại cách diễn đạt lịch sự nếu bạn muốn tiếp tục."
+            ),
+        }
+    return {"ok": True, "reason": ""}
 
 TOAN_RAT_HOA = {14, 18}
 TOAN_KHA_HOA = {23, 29, 32, 36}
@@ -28,6 +65,43 @@ TOPIC_LABELS = {
 
 HANH_SINH = {"Mộc": "Hỏa", "Hỏa": "Thổ", "Thổ": "Kim", "Kim": "Thủy", "Thủy": "Mộc"}
 HANH_KHAC = {"Mộc": "Thổ", "Thổ": "Thủy", "Thủy": "Hỏa", "Hỏa": "Kim", "Kim": "Mộc"}
+
+# Kho tri thức Cuốn II, III, IV: Tên cổ 16 Thần & Phân vùng Trong (Nội) / Ngoài (Ngoại)
+PALACE_CLASSICAL_INFO = {
+    "Tốn": {"co_name": "Sáng lớn (Đại Linh)", "zone": "Ngoài"},
+    "Tỵ": {"co_name": "Thần lớn (Đại Thần)", "zone": "Ngoài"},
+    "Ngọ": {"co_name": "Oai lớn (Đại Uy)", "zone": "Ngoài"},
+    "Mùi": {"co_name": "Đạo trời (Thiên Đạo)", "zone": "Ngoài"},
+    "Khôn": {"co_name": "Vũ lớn (Đại Vũ)", "zone": "Ngoài"},
+    "Thân": {"co_name": "Đức võ (Vũ Đức)", "zone": "Ngoài"},
+    "Dậu": {"co_name": "Nhóm cả (Đại Tộc)", "zone": "Ngoài"},
+    "Tuất": {"co_name": "Chủ âm (Âm Chủ)", "zone": "Ngoài"},
+    "Kiền": {"co_name": "Đức âm (Âm Đức)", "zone": "Trong"},
+    "Hợi": {"co_name": "Nghĩa lớn (Đại Nghĩa)", "zone": "Trong"},
+    "Tý": {"co_name": "Chủ đất (Địa Chủ)", "zone": "Trong"},
+    "Sửu": {"co_name": "Đức dương (Dương Đức)", "zone": "Trong"},
+    "Cấn": {"co_name": "Đức hòa (Hòa Đức)", "zone": "Trong"},
+    "Dần": {"co_name": "Lã thân (Lã Thân)", "zone": "Trong"},
+    "Mão": {"co_name": "Tùng cao (Cao Tùng)", "zone": "Trong"},
+    "Thìn": {"co_name": "Dương cả (Thái Dương)", "zone": "Trong"},
+    "Trung": {"co_name": "Trung Cung", "zone": "Trung"},
+}
+
+QUOTES_CUON_2_3 = {
+    "hoa": "“Âm dương phối hợp nhau, là số toán hòa. Hòa thì cát.”",
+    "cua_du_tuong_phat": "“Chủ khách cửa đủ tướng phát, Âm Dương hòa, lợi dấy quân khởi trước thắng, khởi sau thua.”",
+    "co_giu": "“Hoặc cửa không đủ, tướng không phát, nên cố giữ, không để động trước.”",
+    "yem_hoa": "“Yếm... Nạn toàn do gặp được ban toán hòa.”",
+    "bach_hoa": "“Càng ép, toán hòa, mưu lành; chẳng hòa, mưu việc chẳng thành.”",
+    "cach": "“Cách ấy hung nguy. Lo thua vì toán hòa duy chẳng hòa.”",
+    "chi_gio": "“Mọi xem đều xét Chi Giờ... Đủ, Hòa, Tướng Phát trăm tao tốt vời.”",
+}
+
+DISCLAIMER_TEXT = (
+    "Lưu ý: Tỷ lệ % trên chỉ là mức độ thuận lợi tham khảo theo khí số quẻ Thái Ất Thần Kinh, "
+    "không phải kết quả chắc chắn tuyệt đối. Khi thực hiện công việc thực tế, bạn vẫn cần soi xét kỹ "
+    "hồ sơ, điều kiện khách quan và chuẩn bị phương án dự phòng chu đáo."
+)
 
 
 def evaluate_toan(toan_val: int, label: str = "Chủ") -> dict:
@@ -139,7 +213,45 @@ def evaluate_patterns(board: dict) -> list:
             "detail": f"Khách Đại Tướng ở {khach_dai}: phe Khách khó tiến nhanh, nếu chủ động tấn công lúc này dễ gặp cản trở.",
         })
 
-    # 5. Tam Cơ & Ngũ Phúc trợ lực
+    # 5. Xung Đối (Cuốn II, p.96): Văn Xương hoặc Chủ Đại Tướng đối xung Thái Ất (cách 8 cung)
+    if dist_vx == 8:
+        patterns.append({
+            "name": "Xung Đối (Văn Xương đối Thái Ất)",
+            "severity": "canh_bao",
+            "detail": f"Văn Xương tại {vx_cung} đối xung với Thái Ất tại {at_cung}: dễ có bất đồng quan điểm hoặc trắc trở trong trao đổi, cần đối thoại thẳng thắn và mềm mỏng.",
+        })
+
+    # 6. Đề Hiệp (Cuốn II, p.96): Văn Xương và Thủy Kích kẹp hai bên (trước/sau 1-2 cung) Thái Ất
+    if dist_vx in (1, 2, 14, 15) and dist_tk in (1, 2, 14, 15):
+        patterns.append({
+            "name": "Đề Hiệp (Hai Mục hiệp Thái Ất)",
+            "severity": "canh_bao",
+            "detail": "Văn Xương và Thủy Kích cùng áp sát hai bên Thái Ất: nhiều luồng tác động đan xen; nếu Toán Hòa & Cửa Đủ thì mưu sự vẫn thành.",
+        })
+
+    # 7. Cửa Đủ – Tướng Phát (Cuốn III, p.124-126)
+    chu_phat = (chu_dai != "Trung" and chu_dai != at_cung and board["chu"]["toan"] >= 10)
+    khach_phat = (khach_dai != "Trung" and khach_dai != at_cung and board["khach"]["toan"] >= 10)
+    if chu_phat and khach_phat:
+        patterns.append({
+            "name": "Chủ Khách Tướng Phát – Cửa Đủ",
+            "severity": "cat",
+            "detail": "Cả Chủ và Khách đều không bị Giam ở Trung Cung và có Toán dài (>= 10): “Cửa đủ, tướng phát, âm dương hòa, trăm việc đều lành.”",
+        })
+    elif khach_phat and not chu_phat:
+        patterns.append({
+            "name": "Khách Tướng Phát (Lợi người chủ động)",
+            "severity": "cat",
+            "detail": f"Khách Đại Tướng ở {khach_dai} phát động (Toán {board['khach']['toan']}), thuận cho phía chủ động khởi xướng hoặc đối tác bên ngoài.",
+        })
+    elif chu_phat and not khach_phat:
+        patterns.append({
+            "name": "Chủ Tướng Phát (Lợi người giữ thế)",
+            "severity": "cat",
+            "detail": f"Chủ Đại Tướng ở {chu_dai} vững vàng (Toán {board['chu']['toan']}), thuận cho việc bảo toàn vị thế và điều phối nội bộ.",
+        })
+
+    # 8. Tam Cơ & Ngũ Phúc trợ lực
     if board["ngu_phuc_cung"] == at_cung or board["ngu_phuc_cung"] == chu_dai:
         patterns.append({
             "name": "Ngũ Phúc lâm vị",
@@ -155,6 +267,89 @@ def evaluate_patterns(board: dict) -> list:
         })
 
     return patterns
+
+
+def compute_success_probability(
+    chu_eval: dict,
+    khach_eval: dict,
+    balance: dict,
+    patterns: list,
+    stance: str = "auto",
+    querent_note: str = "",
+) -> dict:
+    """Tính tỷ lệ % thuận lợi / thành công tham khảo dựa trên quy tắc Cuốn II, III, V."""
+    pct = 50
+    factors = []
+
+    # 1. Toán Hòa của Chủ & Khách
+    for ev in (chu_eval, khach_eval):
+        if ev["score"] >= 3:
+            pct += 14
+            factors.append(f"+14% ({ev['label']} đạt {ev['level']} — {ev['toan']})")
+        elif ev["score"] == 2:
+            pct += 9
+            factors.append(f"+9% ({ev['label']} đạt {ev['level']} — {ev['toan']})")
+        elif ev["score"] == 1:
+            pct += 4
+            factors.append(f"+4% ({ev['label']} {ev['level']} — {ev['toan']})")
+        elif ev["score"] <= -1:
+            pct -= 7
+            factors.append(f"-7% ({ev['label']} {ev['level']} — {ev['toan']})")
+        if ev["ba_tai_issues"]:
+            pct -= 4
+            factors.append(f"-4% ({ev['label']} phạm Ba Tài không toán)")
+
+    # 2. Cách cục Cuốn II & III
+    for p in patterns:
+        if p["severity"] == "cat":
+            pct += 6
+            factors.append(f"+6% (Cách cục tốt: {p['name']})")
+        elif p["severity"] == "hung":
+            pct -= 10
+            factors.append(f"-10% (Cảnh báo cách cục: {p['name']})")
+        else:
+            pct -= 5
+            factors.append(f"-5% (Lưu ý cách cục: {p['name']})")
+
+    # 3. Tương quan thế đứng người hỏi (Chủ / Khách)
+    fav = balance["favored"]
+    if stance in ("chu", "khach"):
+        if fav == stance:
+            pct += 10
+            factors.append(f"+10% (Đúng thế {stance.upper()} đang được quẻ ủng hộ)")
+        elif fav == "can_bang":
+            pct += 3
+            factors.append("+3% (Thế Chủ – Khách cân bằng)")
+        else:
+            pct -= 8
+            factors.append(f"-8% (Vị thế {stance.upper()} đang ngược với luồng khí ưu thế của quẻ)")
+
+    # 4. Nạp Âm người hỏi (nếu có)
+    if "tương sinh" in querent_note or "đồng hành" in querent_note:
+        pct += 5
+        factors.append("+5% (Mệnh Nạp Âm tương sinh/đồng hành với Thái Ất)")
+    elif "chế ước" in querent_note:
+        pct -= 3
+        factors.append("-3% (Mệnh Nạp Âm bị cung Thái Ất chế ước)")
+
+    pct = max(15, min(92, pct))
+    if pct >= 70:
+        label = "Khả năng thành công cao"
+        tier = "cat"
+    elif pct >= 50:
+        label = "Khả năng thành công khá / Trung bình khá"
+        tier = "binh_hoa"
+    else:
+        label = "Khả năng thuận lợi thấp — Cần chuẩn bị kỹ hoặc chờ thời điểm tốt hơn"
+        tier = "can_trong"
+
+    return {
+        "percent": pct,
+        "label": label,
+        "tier": tier,
+        "factors": factors,
+        "disclaimer": DISCLAIMER_TEXT,
+    }
 
 
 def _compare_chu_khach(chu_eval: dict, khach_eval: dict) -> dict:
@@ -178,30 +373,32 @@ def analyze_divination(
     stance: str = "auto",
     urgency: str = "binh_thuong",
     extra_context: str = "",
+    partner_birth_year: int = None,
+    compare_dates: list = None,
 ) -> dict:
-    """Luận giải tương tác cho quẻ hỏi việc tức thời."""
+    """Luận giải tương tác cho quẻ hỏi việc tức thời (chuẩn mực, trung thực, tích cực)."""
     board = chart["board"]
     chu_eval = evaluate_toan(board["chu"]["toan"], "Chủ")
     khach_eval = evaluate_toan(board["khach"]["toan"], "Khách")
     patterns = evaluate_patterns(board)
     balance = _compare_chu_khach(chu_eval, khach_eval)
 
-    # Xác định kết luận cá nhân hóa theo stance của người hỏi
+    # Xác định kết luận cá nhân hóa theo stance của người hỏi (trung thực nhưng tích cực, không tiêu cực)
     fav = balance["favored"]
     if stance == "chu":
         if fav == "chu":
-            stance_verdict = "CÁT — Bạn đang ở thế Chủ và quẻ cũng lợi Chủ: hãy tự tin giữ vững lập trường, bảo toàn thành quả."
+            stance_verdict = "THUẬN LỢI — Bạn đang ở thế Chủ và quẻ cũng lợi Chủ: hãy tự tin giữ vững lập trường, chủ động kiểm soát nhịp độ và bảo toàn thành quả."
         elif fav == "khach":
-            stance_verdict = "THẬN TRỌNG — Bạn đang ở thế Chủ nhưng quẻ lại lợi Khách: đối phương hoặc hoàn cảnh bên ngoài đang mạnh, cần phòng thủ chắc và tránh sơ hở."
+            stance_verdict = "CẦN KIÊN NHẪN & CỦNG CỐ — Bạn đang ở thế Chủ trong khi khí vận nghiêng về Khách: nên giữ thế ổn định, rà soát kỹ các điều kiện an toàn và chờ thời điểm thuận hơn để chốt việc."
         else:
-            stance_verdict = "BÌNH HÒA — Thế cân bằng, giữ ổn định và lắng nghe thêm thông tin trước khi quyết định lớn."
+            stance_verdict = "CÂN BẰNG — Hai bên ngang sức, nên ưu tiên đối thoại thiện chí và giữ sự ổn định."
     elif stance == "khach":
         if fav == "khach":
-            stance_verdict = "CÁT — Bạn đang ở thế Khách và quẻ lợi Khách: rất thuận để chủ động tiến tới, đề xuất, ký kết hoặc khởi sự."
+            stance_verdict = "THUẬN LỢI — Bạn đang ở thế Khách và quẻ lợi Khách: rất thuận để chủ động đề xuất, liên hệ trước hoặc triển khai kế hoạch."
         elif fav == "chu":
-            stance_verdict = "CHƯA NÊN VỘI — Bạn đang muốn chủ động (Khách) nhưng quẻ lại lợi Chủ: nếu cưỡng cầu dễ gặp lực cản, nên chuẩn bị kỹ hơn hoặc lùi lại 1 nhịp."
+            stance_verdict = "NÊN CHUẨN BỊ KỸ HƠN — Bạn đang muốn chủ động (Khách) nhưng quẻ lại lợi Chủ: hãy đi từng bước thăm dò mềm mỏng, chuẩn bị đầy đủ hồ sơ/dữ liệu để tăng sức thuyết phục."
         else:
-            stance_verdict = "BÌNH HÒA — Tiến hành từng bước thăm dò, dùng sự mềm mỏng để thuyết phục."
+            stance_verdict = "CÂN BẰNG — Tiến hành từng bước chắc chắn, lấy sự chân thành và minh bạch làm trọng."
     else:
         stance_verdict = balance["summary"]
 
@@ -211,19 +408,17 @@ def analyze_divination(
     at_hanh = PALACE_HANH[at_cung]
     ngu_phuc_dir = PALACE_DIRECTION[board["ngu_phuc_cung"]]
 
-    # Lời khuyên theo chủ đề
     topic = chart.get("topic", "chung")
     topic_label = TOPIC_LABELS.get(topic, TOPIC_LABELS["chung"])
     topic_advice = _build_topic_advice(topic, fav, patterns, urgency)
 
-    # Câu hỏi tương tác gợi mở cho người dùng tinh chỉnh thêm
     followup_prompts = [
         {
             "id": "stance",
             "question": "Trong việc này, vị thế thực tế của bạn là gì?",
             "options": [
-                {"value": "chu", "label": "Thế Chủ (giữ vị trí hiện tại, bảo vệ, chờ đợi)"},
-                {"value": "khach", "label": "Thế Khách (chủ động đi xin, mở mới, thay đổi, tiến công)"},
+                {"value": "chu", "label": "Thế Chủ (giữ vị trí hiện tại, bảo vệ, điều phối)"},
+                {"value": "khach", "label": "Thế Khách (chủ động đi xin, mở mới, thay đổi, đề xuất)"},
             ],
         },
         {
@@ -236,7 +431,6 @@ def analyze_divination(
         },
     ]
 
-    # Đánh giá tương sinh/khắc nếu có năm sinh người hỏi
     querent_note = ""
     if chart.get("querent"):
         q = chart["querent"]
@@ -246,11 +440,27 @@ def analyze_divination(
         elif HANH_SINH.get(at_hanh) == q_hanh:
             querent_note = f"Cung Thái Ất ({at_hanh}) **tương sinh** cho Mệnh của bạn ({q_hanh}): được thời vận nâng đỡ."
         elif HANH_SINH.get(q_hanh) == at_hanh:
-            querent_note = f"Mệnh của bạn ({q_hanh}) **sinh xuất** cho cung Thái Ất ({at_hanh}): cần bỏ công sức nhiều mới thu kết quả."
+            querent_note = f"Mệnh của bạn ({q_hanh}) **sinh xuất** cho cung Thái Ất ({at_hanh}): cần đầu tư công sức chu đáo sẽ thu quả ngọt."
         elif HANH_KHAC.get(at_hanh) == q_hanh:
-            querent_note = f"Cung Thái Ất ({at_hanh}) **khắc** Mệnh ({q_hanh}): có áp lực ngoại cảnh, cần kiên nhẫn hóa giải."
+            querent_note = f"Cung Thái Ất ({at_hanh}) **chế ước** Mệnh ({q_hanh}): có áp lực ngoại cảnh, nên giữ bình tĩnh và làm từng bước chắc chắn."
         else:
-            querent_note = f"Mệnh của bạn ({q_hanh}) **chế ngự** được cung Thái Ất ({at_hanh}): có thể chủ động kiểm soát tình huống."
+            querent_note = f"Mệnh của bạn ({q_hanh}) **làm chủ** được cung Thái Ất ({at_hanh}): có khả năng điều phối và kiểm soát tình huống."
+
+    partner_info = None
+    if partner_birth_year:
+        p_can, p_chi, _, _ = lc.get_year_can_chi(int(partner_birth_year))
+        partner_info = lc.get_thai_at_can_chi_numbers(p_can, p_chi)
+        partner_info["birth_year"] = int(partner_birth_year)
+
+    comparison = _build_timing_comparison(chart, compare_dates)
+    success_probability = compute_success_probability(
+        chu_eval, khach_eval, balance, patterns, stance=stance, querent_note=querent_note
+    )
+    structured_report = _build_structured_report(
+        chart, chu_eval, khach_eval, balance, patterns,
+        stance, stance_verdict, topic_label, topic_advice,
+        at_dir, ngu_phuc_dir, querent_note, partner_info, comparison, urgency, extra_context
+    )
 
     return {
         "topic_label": topic_label,
@@ -263,11 +473,173 @@ def analyze_divination(
         "direction_advice": f"Thái Ất tại {at_cung} ({at_dir}, hành {at_hanh}). Hướng Ngũ Phúc trợ lực: **{ngu_phuc_dir}** ({board['ngu_phuc_cung']}).",
         "topic_advice": topic_advice,
         "querent_note": querent_note,
+        "partner": partner_info,
         "extra_context_note": f"Ghi chú ngữ cảnh đã xét: {extra_context}" if extra_context else "",
         "followup_prompts": followup_prompts,
+        "comparison": comparison,
+        "success_probability": success_probability,
+        "structured_report": structured_report,
         "summary_narrative": _build_divination_narrative(
             chart, chu_eval, khach_eval, balance, patterns, stance, stance_verdict, topic_advice, at_dir, ngu_phuc_dir, querent_note, urgency
         ),
+    }
+
+
+def _score_chart_timing(sub_chart: dict) -> dict:
+    """Chấm điểm tổng hợp một mốc thời gian dựa trên Toán Hòa & Cách Cục."""
+    b = sub_chart["board"]
+    c_eval = evaluate_toan(b["chu"]["toan"], "Chủ")
+    k_eval = evaluate_toan(b["khach"]["toan"], "Khách")
+    pats = evaluate_patterns(b)
+    bal = _compare_chu_khach(c_eval, k_eval)
+
+    sev_score = sum(2 if p["severity"] == "cat" else (-2 if p["severity"] == "hung" else -1) for p in pats)
+    total_score = c_eval["score"] + k_eval["score"] + sev_score
+
+    if total_score >= 3:
+        rating = "Đại Cát (Vượng khí / Hanh thông)"
+        tier = "cat"
+        rec = "Thời điểm tối ưu để triển khai"
+    elif total_score >= 0:
+        rating = "Bình Hòa (Có thể tiến hành)"
+        tier = "binh_hoa"
+        rec = "Thực hiện được, nên chuẩn bị kỹ"
+    else:
+        rating = "Kém thuận lợi (Nên cố giữ / Chờ nhịp tốt hơn)"
+        tier = "can_trong"
+        rec = "Nên cố giữ, chưa nên vội đẩy mạnh"
+
+    s = sub_chart["solar"]
+    cc = sub_chart["can_chi"]
+    return {
+        "label": f"{s['day']:02d}/{s['month']:02d}/{s['year']} ({s['hour_24']}h)",
+        "can_chi_day": cc["day"],
+        "don_cuc": f"{b['don_type']} Cục {b['cuc']}",
+        "chu_toan": f"{c_eval['toan']} ({c_eval['level']})",
+        "khach_toan": f"{k_eval['toan']} ({k_eval['level']})",
+        "patterns": [p["name"] for p in pats],
+        "rating": rating,
+        "tier": tier,
+        "score": total_score,
+        "recommendation": rec,
+        "balance_summary": bal["summary"].replace("**", ""),
+    }
+
+
+def _build_timing_comparison(base_chart: dict, compare_dates: list = None) -> dict:
+    """So sánh 1-2 mốc thời gian dự kiến nếu người hỏi cung cấp."""
+    if not compare_dates:
+        return {"has_comparison": False, "items": [], "best_label": ""}
+    items = []
+    for item in compare_dates[:2]:
+        try:
+            d = int(item["day"])
+            m = int(item["month"])
+            y = int(item["year"])
+            h = int(item.get("hour_24", base_chart["solar"]["hour_24"]))
+            sub = build_divination_chart(
+                dd=d, mm=m, yy=y, hour_24=h,
+                ke_mode=base_chart.get("ke_mode", "thoi_ke"),
+                question=base_chart.get("question", ""),
+                topic=base_chart.get("topic", "chung"),
+            )
+            items.append(_score_chart_timing(sub))
+        except Exception:
+            continue
+    if not items:
+        return {"has_comparison": False, "items": [], "best_label": ""}
+    best = max(items, key=lambda x: x["score"])
+    return {
+        "has_comparison": True,
+        "items": items,
+        "best_label": best["label"],
+    }
+
+
+def _build_structured_report(
+    chart, chu_eval, khach_eval, balance, patterns,
+    stance, stance_verdict, topic_label, topic_advice,
+    at_dir, ngu_phuc_dir, querent_note, partner_info, comparison, urgency, extra_context
+) -> dict:
+    b = chart["board"]
+    s = chart["solar"]
+    l = chart["lunar"]
+    cc = chart["can_chi"]
+    ke_names = {
+        "thoi_ke": "Phép Thời Kế (Kế Giờ - 72 Khối Âm/Dương)",
+        "nhat_ke": "Phép Nhật Kế (Kế Ngày)",
+        "nguyet_ke": "Phép Nguyệt Kế (Kế Tháng)",
+        "tue_ke": "Phép Tuế Kế (Kế Năm)",
+    }
+    ke_label = ke_names.get(chart.get("ke_mode", "thoi_ke"), "Phép Thời Kế")
+
+    # 1. Thông tin quẻ & Chủ thể
+    chu_desc = "Người hỏi (Vai trò Chủ)"
+    if chart.get("querent"):
+        q = chart["querent"]
+        chu_desc += f" — Sinh năm {q['birth_year']} ({q['can']} {q['chi']}, Nạp Âm {q['nap_am']})"
+    khach_desc = "Đối tác / Hoàn cảnh bên ngoài (Vai trò Khách)"
+    if partner_info:
+        khach_desc += f" — Sinh năm {partner_info['birth_year']} ({partner_info['can']} {partner_info['chi']}, Nạp Âm {partner_info['nap_am']})"
+
+    sec1 = {
+        "method": f"{ke_label} — chuyên dùng xem xét công việc hàng ngày, thế tương tác Chủ – Khách và mưu sự.",
+        "start_time": f"{s['hour_24']}h (Giờ {cc['hour'].split()[-1]}), ngày {s['day']:02d}/{s['month']:02d}/{s['year']} DL ({l['day']:02d}/{l['month']:02d}/{l['year']} ÂL)",
+        "chu_role": chu_desc,
+        "khach_role": khach_desc,
+        "issue": chart.get("question") or topic_label,
+    }
+
+    # 2. Soi kỹ khung giờ khởi tâm
+    if b["don_type"] == "Âm Độn":
+        quote_don = "“Sau Hạ chí ngày Giáp Tý hoặc Giáp Ngọ, nửa đêm giờ Giáp Tý khởi dùng Độn Âm, 9 cung đi ngược, hết vòng trở lại.”"
+        don_meaning = "Thời điểm khởi tâm nằm trong chu kỳ Độn Âm (9 cung đi ngược) — nhắc nhở nguyên tắc dục tốc bất đạt, nên bình tĩnh rà soát kỹ lưỡng trước khi chốt."
+    else:
+        quote_don = "“Sau Đông chí ngày Giáp Tý hoặc Giáp Ngọ, nửa đêm giờ Giáp Tý khởi dùng Độn Dương, 9 cung đi thuận, hết vòng trở lại.”"
+        don_meaning = "Thời điểm khởi tâm nằm trong chu kỳ Độn Dương (9 cung đi thuận) — khí vận đang hướng mở, thuận cho sự khởi xướng có kế hoạch."
+
+    sec2 = {
+        "don_cuc": f"{b['don_type']} • Nguyên {b['nguyen']} • Cục {b['cuc']} (Kỷ dư: {b['ky_du']})",
+        "quote_don": quote_don,
+        "quote_hoa": "“Âm dương phối hợp nhau, là số toán hòa. Hòa thì cát.” — “Cửa đủ, tướng phát, âm dương hòa, trăm việc đều lành.”",
+        "meaning": don_meaning,
+    }
+
+    # 4. Luận giải chi tiết Chủ - Khách
+    fav = balance["favored"]
+    sec4_khach = (
+        f"Toán Khách đạt {khach_eval['toan']} ({khach_eval['level']}). "
+        + ("Khí vận đang ủng hộ phía Khách: bên đối tác/người tiếp nhận có sự thuận lợi, quy trình trôi chảy."
+           if fav == "khach" else
+           "Phía Khách đang ở thế cần sự phối hợp chặt chẽ từ phía Chủ để việc hoàn tất êm đẹp.")
+    )
+    sec4_chu = (
+        f"Toán Chủ đạt {chu_eval['toan']} ({chu_eval['level']}). "
+        + ("Phía Chủ nắm thế chủ động kiểm soát tiến độ và điều kiện an toàn."
+           if fav == "chu" else
+           "Phía Chủ nên giữ sự điềm tĩnh, rà soát kỹ các bước và chọn đúng thời điểm thuận khí để hành sự.")
+    )
+    if querent_note:
+        sec4_chu += " " + querent_note.replace("**", "")
+
+    # 5. Kết luận & Lời khuyên hành động
+    conclusion = (
+        f"Ưu tiên chọn mốc **{comparison['best_label']}** để hành sự sẽ giúp dòng việc hanh thông, an toàn và đạt hiệu quả tốt nhất."
+        if comparison.get("has_comparison")
+        else stance_verdict.replace("**", "")
+    )
+
+    return {
+        "section1": sec1,
+        "section2": sec2,
+        "section3": comparison,
+        "section4": {"khach": sec4_khach, "chu": sec4_chu},
+        "section5": {
+            "conclusion": conclusion,
+            "topic_advice": topic_advice,
+            "direction": f"Hướng cát lợi (Ngũ Phúc): {ngu_phuc_dir} ({b['ngu_phuc_cung']}). Thái Ất tại {b['thai_at_cung']} ({at_dir}).",
+            "extra_context": extra_context,
+        },
     }
 
 
@@ -451,6 +823,9 @@ def analyze_nhan_menh(chart: dict) -> dict:
             "patterns": view_patterns,
             "hit_note": hit_note,
         },
+        "success_probability": compute_success_probability(
+            view_chu, view_khach, view_balance, view_patterns, stance="auto", querent_note=menh_rel
+        ),
         "summary_narrative": {
             "narrative": (
                 f"Đương số {chart.get('name', '')} ({chart['am_duong_menh']}, an 12 cung theo chiều {'Thuận' if chart['is_thuan'] else 'Nghịch'}) "

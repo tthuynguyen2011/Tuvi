@@ -50,6 +50,12 @@ def export_thai_at_to_docx_bytes(chart: dict, analysis: dict) -> bytes:
         if analysis.get("querent_note"):
             doc.add_paragraph(analysis["querent_note"])
         sn = analysis.get("summary_narrative")
+        sp = analysis.get("success_probability")
+        if sp:
+            doc.add_heading(f"Đánh giá tỷ lệ thuận lợi theo quẻ: {sp['percent']}% ({sp['label']})", level=2)
+            for f in sp.get("factors", []):
+                doc.add_paragraph(f"• {f}")
+            doc.add_paragraph(sp["disclaimer"])
         if sn:
             doc.add_heading("4. Tổng Giải (Diễn giải & Hướng giải quyết)", level=1)
             doc.add_paragraph(sn["narrative"])
@@ -80,6 +86,10 @@ def export_thai_at_to_docx_bytes(chart: dict, analysis: dict) -> bytes:
         for p in va["patterns"]:
             doc.add_paragraph(f"• {p['name']}: {p['detail']}")
         sn = analysis.get("summary_narrative")
+        sp = analysis.get("success_probability")
+        if sp:
+            doc.add_heading(f"Đánh giá tỷ lệ thuận lợi năm {chart['view_year']}: {sp['percent']}% ({sp['label']})", level=2)
+            doc.add_paragraph(sp["disclaimer"])
         if sn:
             doc.add_heading("3. Tổng Giải (Diễn giải & Hướng giải quyết)", level=1)
             doc.add_paragraph(sn["narrative"])

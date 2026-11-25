@@ -11,7 +11,7 @@ from tuvi_engine import build_chart
 from tuvi_analyzer import analyze_full_report, analyze_palaces_for_year
 from docx_exporter import export_to_docx_bytes
 from thai_at_engine import build_divination_chart, build_nhan_menh_chart
-from thai_at_analyzer import analyze_divination, analyze_nhan_menh
+from thai_at_analyzer import analyze_divination, analyze_nhan_menh, check_querent_language
 from thai_at_exporter import export_thai_at_to_docx_bytes
 
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
@@ -82,6 +82,12 @@ class TuViHandler(SimpleHTTPRequestHandler):
 
     def _handle_thai_at(self, payload):
         mode = payload.get("mode", "divination")
+        # Kiểm tra ngôn ngữ chuẩn mực trước khi xử lý
+        for txt_field in ("question", "extra_context", "name"):
+            chk = check_querent_language(str(payload.get(txt_field) or ""))
+            if not chk["ok"]:
+                return self._send_json({"rejected": True, "message": chk["reason"]}, status=200)
+
         if self.path == "/api/thai-at/cast":
             if mode == "nhan_menh":
                 chart = build_nhan_menh_chart(
@@ -98,6 +104,7 @@ class TuViHandler(SimpleHTTPRequestHandler):
                 analysis = analyze_nhan_menh(chart)
             else:
                 q_by = payload.get("querent_birth_year")
+                p_by = payload.get("partner_birth_year")
                 chart = build_divination_chart(
                     dd=int(payload.get("day", 23)),
                     mm=int(payload.get("month", 11)),
@@ -113,17 +120,22 @@ class TuViHandler(SimpleHTTPRequestHandler):
                     stance=payload.get("stance", "auto"),
                     urgency=payload.get("urgency", "binh_thuong"),
                     extra_context=(payload.get("extra_context") or "").strip(),
+                    partner_birth_year=int(p_by) if p_by else None,
+                    compare_dates=payload.get("compare_dates") or None,
                 )
             self._send_json({"chart": chart, "analysis": analysis})
         elif self.path == "/api/thai-at/consult":
             chart = payload.get("chart")
             if not chart:
                 return self._send_json({"error": "Thiếu dữ liệu quẻ"}, status=400)
+            p_by = payload.get("partner_birth_year")
             analysis = analyze_divination(
                 chart,
                 stance=payload.get("stance", "auto"),
                 urgency=payload.get("urgency", "binh_thuong"),
                 extra_context=(payload.get("extra_context") or "").strip(),
+                partner_birth_year=int(p_by) if p_by else None,
+                compare_dates=payload.get("compare_dates") or None,
             )
             self._send_json({"analysis": analysis})
         elif self.path == "/api/thai-at/export-docx":

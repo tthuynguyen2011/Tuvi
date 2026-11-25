@@ -89,8 +89,8 @@ def export_to_docx_bytes(chart: dict, report: dict) -> bytes:
             for run in p.runs:
                 run.font.size = Pt(7.5)
 
-    # 2. Cach Cuc
-    doc.add_heading("II. CÁC CÁCH CỤC NỔI BẬT", level=1)
+    # 2. Cach Cuc & Tong Luan
+    doc.add_heading("II. CÁC CÁCH CỤC NỔI BẬT & TỔNG LUẬN TRỌN ĐỜI", level=1)
     if report["cach_cuc"]:
         for cc in report["cach_cuc"]:
             p = doc.add_paragraph(style="List Bullet")
@@ -100,11 +100,22 @@ def export_to_docx_bytes(chart: dict, report: dict) -> bytes:
     else:
         doc.add_paragraph("Lá số bình hòa, không thiên lệch quá mức về một cách cục cực đoan.")
 
+    os_sum = report.get("overall_summary")
+    if os_sum:
+        doc.add_paragraph(_clean_md(os_sum["narrative"]))
+        if os_sum.get("year_outlook"):
+            doc.add_paragraph(_clean_md(os_sum["year_outlook"]))
+        for pl in os_sum.get("pillars", []):
+            doc.add_paragraph(_clean_md(pl), style="List Bullet")
+        doc.add_paragraph(os_sum["disclaimer"])
+
     # 3. Luan giai 12 cung chinh
     doc.add_heading("III. LUẬN GIẢI CHI TIẾT 12 CUNG CHÍNH (TRỌN ĐỜI)", level=1)
     for pr in report["palace_readings"]:
         h = doc.add_heading(f"{pr['palace_name']} ({pr['chi']}) — Điểm: {pr['score']}/100 ({pr['rating']})", level=2)
         doc.add_paragraph(f"Phạm vi: {pr['domain']}.")
+        if pr.get("detailed_narrative"):
+            doc.add_paragraph(_clean_md(pr["detailed_narrative"]))
         p_cat = doc.add_paragraph()
         p_cat.add_run("• Điểm Cát (Thế mạnh & Cơ hội): ").bold = True
         p_cat.add_run(" ".join(_clean_md(x) for x in pr["cat_points"]))

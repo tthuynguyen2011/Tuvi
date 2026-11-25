@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 import lunar_calendar as lc
 from thai_at_engine import _place_stars_from_tich, build_divination_chart, build_nhan_menh_chart
-from thai_at_analyzer import analyze_divination, analyze_nhan_menh
+from thai_at_analyzer import analyze_divination, analyze_nhan_menh, check_querent_language
 from thai_at_exporter import export_thai_at_to_docx_bytes
 
 
@@ -62,9 +62,27 @@ def test_divination_and_consult_and_docx():
     assert 1 <= chart["board"]["cuc"] <= 72
 
     a_auto = analyze_divination(chart, stance="auto")
-    a_khach = analyze_divination(chart, stance="khach", urgency="gap", extra_context="Đối tác thúc ký")
+    a_khach = analyze_divination(
+        chart, stance="khach", urgency="gap", extra_context="Đối tác thúc ký",
+        partner_birth_year=2003,
+        compare_dates=[
+            {"day": 14, "month": 10, "year": 2026, "hour_24": 16},
+            {"day": 16, "month": 10, "year": 2026, "hour_24": 16},
+        ],
+    )
     assert a_khach["stance"] == "khach"
     assert "Đối tác thúc ký" in a_khach["extra_context_note"]
+    assert a_khach["comparison"]["has_comparison"] is True
+    assert len(a_khach["comparison"]["items"]) == 2
+    assert "section1" in a_khach["structured_report"]
+    assert "section5" in a_khach["structured_report"]
+    sp = a_khach["success_probability"]
+    assert 15 <= sp["percent"] <= 92
+    assert "tham khảo" in sp["disclaimer"]
+
+    # Moderation checks
+    assert check_querent_language("Xin hỏi về giao dịch chuyển tiền quốc tế")["ok"] is True
+    assert check_querent_language("Nói bậy vãi lồn")["ok"] is False
 
     docx_div = export_thai_at_to_docx_bytes(chart, a_khach)
     assert len(docx_div) > 5000

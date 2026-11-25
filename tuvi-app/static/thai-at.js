@@ -8,6 +8,8 @@
   let currentStance = "auto";
   let currentUrgency = "binh_thuong";
   let currentExtraContext = "";
+  let currentPartnerYear = null;
+  let currentCompareDates = [];
 
   // ==================== SERVICE SWITCHER ====================
   const svcBtns = document.querySelectorAll(".svc-btn");
@@ -96,11 +98,26 @@
   document.getElementById("ta-btn-now").addEventListener("click", fillNow);
 
   // ==================== SUBMIT DIVINATION ====================
+  function parseCompareDate(id, hour24) {
+    const v = document.getElementById(id)?.value;
+    if (!v) return null;
+    const [yy, mm, dd] = v.split("-").map(Number);
+    if (!yy || !mm || !dd) return null;
+    return { day: dd, month: mm, year: yy, hour_24: hour24 };
+  }
+
   document.getElementById("ta-divination-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     currentStance = "auto";
     currentUrgency = "binh_thuong";
     currentExtraContext = "";
+    const h24 = Number(document.getElementById("ta-hour").value);
+    currentPartnerYear = document.getElementById("ta-partner-year").value || null;
+    currentCompareDates = [
+      parseCompareDate("ta-cmp-1", h24),
+      parseCompareDate("ta-cmp-2", h24),
+    ].filter(Boolean);
+
     const payload = {
       mode: "divination",
       question: document.getElementById("ta-question").value,
@@ -109,8 +126,10 @@
       day: Number(document.getElementById("ta-day").value),
       month: Number(document.getElementById("ta-month").value),
       year: Number(document.getElementById("ta-year").value),
-      hour_24: Number(document.getElementById("ta-hour").value),
+      hour_24: h24,
       querent_birth_year: document.getElementById("ta-birth-year").value || null,
+      partner_birth_year: currentPartnerYear,
+      compare_dates: currentCompareDates,
       stance: currentStance,
       urgency: currentUrgency,
     };
@@ -142,6 +161,10 @@
         body: JSON.stringify(payload),
       });
       const data = await resp.json();
+      if (data.rejected) {
+        showRejectedNotice(data.message);
+        return;
+      }
       if (!resp.ok) throw new Error(data.error || "Lỗi lập quẻ Thái Ất");
       currentTaData = data;
       renderThaiAtBoard(data.chart);
@@ -149,6 +172,18 @@
     } catch (err) {
       alert("Lỗi: " + err.message);
     }
+  }
+
+  function showRejectedNotice(message) {
+    currentTaData = null;
+    document.getElementById("thai-at-board").innerHTML =
+      `<div class="ta-rejected-box" style="grid-column:1/-1;grid-row:1/-1;">
+        <h3>⛔ Tạm Dừng Tương Tác</h3>
+        <p>${escapeHtml(message)}</p>
+      </div>`;
+    document.getElementById("thai-at-inspector").innerHTML =
+      `<div class="ta-rejected-box"><p>${escapeHtml(message)}</p></div>`;
+    document.getElementById("thai-at-consult-panel").style.display = "none";
   }
 
   // ==================== RENDER 5x5 BOARD ====================
@@ -325,7 +360,7 @@
             ${analysis.khach_eval.ba_tai_issues.map((x) => `<p class="ta-warn">⚠ ${escapeHtml(x)}</p>`).join("")}
           </div>
         </div>
-        ${renderSummaryNarrativeHtml(analysis.summary_narrative)}
+        ${renderSummaryNarrativeHtml(analysis.summary_narrative, analysis.structured_report, analysis.success_probability)}
       `;
 
       panel.querySelectorAll(".ta-opt-btn").forEach((btn) => {
@@ -378,19 +413,109 @@
             <div class="ta-c12-grid">${c12Html}</div>
           </div>
         </div>
-        ${renderSummaryNarrativeHtml(analysis.summary_narrative)}
+        ${renderSummaryNarrativeHtml(analysis.summary_narrative, analysis.structured_report, analysis.success_probability)}
       `;
     }
   }
 
-  function renderSummaryNarrativeHtml(sn) {
+  function renderSummaryNarrativeHtml(sn, sr, sp) {
     if (!sn) return "";
     const stepsHtml = (sn.resolution || [])
       .map((s) => `<li>${escapeHtml(s)}</li>`)
       .join("");
+
+    let probHtml = "";
+    if (sp) {
+      const factorsHtml = (sp.factors || [])
+        .map((f) => `<li>${escapeHtml(f)}</li>`)
+        .join("");
+      probHtml = `
+        <div class="ta-prob-card tier-${sp.tier}">
+          <div class="ta-prob-head">
+            <div>
+              <strong>🎯 Tỷ lệ thuận lợi / thành công theo quẻ:</strong>
+              <span class="ta-prob-label">${escapeHtml(sp.label)}</span>
+            </div>
+            <div class="ta-prob-pct">${sp.percent}%</div>
+          </div>
+          <div class="ta-prob-bar"><div class="ta-prob-fill" style="width:${sp.percent}%"></div></div>
+          ${factorsHtml ? `<ul class="ta-prob-factors">${factorsHtml}</ul>` : ""}
+          <div class="ta-prob-disclaimer">⚠ ${escapeHtml(sp.disclaimer)}</div>
+        </div>
+      `;
+    }
+
+    let structuredHtml = "";
+    if (sr) {
+      const s1 = sr.section1;
+      const s2 = sr.section2;
+      const s3 = sr.section3;
+      const s4 = sr.section4;
+      const s5 = sr.section5;
+
+      let cmpHtml = "";
+      if (s3 && s3.has_comparison && s3.items.length) {
+        const rows = s3.items
+          .map(
+            (it) => `
+            <tr class="tier-${it.tier}">
+              <td><strong>${escapeHtml(it.label)}</strong><br><small>${escapeHtml(it.can_chi_day)} • ${escapeHtml(it.don_cuc)}</small></td>
+              <td><strong>${escapeHtml(it.rating)}</strong></td>
+              <td>Chủ: ${escapeHtml(it.chu_toan)}<br>Khách: ${escapeHtml(it.khach_toan)}</td>
+              <td>${escapeHtml(it.patterns.join(", "))}</td>
+              <td><strong>${escapeHtml(it.recommendation)}</strong></td>
+            </tr>`
+          )
+          .join("");
+        cmpHtml = `
+          <div class="ta-sr-block">
+            <h4>3. So Sánh Các Mốc Thời Gian Dự Kiến</h4>
+            <table class="ta-cmp-table">
+              <thead><tr><th>Mốc thời gian</th><th>Đánh giá</th><th>Số Toán</th><th>Cách cục</th><th>Khuyến nghị</th></tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+            <p style="margin-top:6px;">✅ <strong>Mốc tối ưu:</strong> ${escapeHtml(s3.best_label)}</p>
+          </div>
+        `;
+      }
+
+      structuredHtml = `
+        <div class="ta-sr-sections">
+          <div class="ta-sr-block">
+            <h4>1. Thông Tin Quẻ &amp; Chủ Thể</h4>
+            <ul>
+              <li><strong>Phương pháp:</strong> ${escapeHtml(s1.method)}</li>
+              <li><strong>Giờ khởi tâm:</strong> ${escapeHtml(s1.start_time)}</li>
+              <li><strong>Vai trò Chủ:</strong> ${escapeHtml(s1.chu_role)}</li>
+              <li><strong>Vai trò Khách:</strong> ${escapeHtml(s1.khach_role)}</li>
+              <li><strong>Vấn đề xem xét:</strong> ${escapeHtml(s1.issue)}</li>
+            </ul>
+          </div>
+          <div class="ta-sr-block">
+            <h4>2. Soi Kỹ Khung Giờ Khởi Tâm (${escapeHtml(s2.don_cuc)})</h4>
+            <blockquote class="ta-quote">${escapeHtml(s2.quote_don)}</blockquote>
+            <blockquote class="ta-quote">${escapeHtml(s2.quote_hoa)}</blockquote>
+            <p>${escapeHtml(s2.meaning)}</p>
+          </div>
+          ${cmpHtml}
+          <div class="ta-sr-block">
+            <h4>4. Luận Giải Chi Tiết Tương Tác Chủ – Khách</h4>
+            <p><strong>• Phía Khách (Đối tác / Hoàn cảnh):</strong> ${escapeHtml(s4.khach)}</p>
+            <p><strong>• Phía Chủ (Người hỏi / Điều phối):</strong> ${escapeHtml(s4.chu)}</p>
+          </div>
+          <div class="ta-sr-block">
+            <h4>5. Kết Luận &amp; Phương Hướng</h4>
+            <p>${formatMdBold(s5.conclusion)}</p>
+            <p>${escapeHtml(s5.direction)}</p>
+          </div>
+        </div>
+      `;
+    }
+
     return `
       <div class="ta-tong-giai">
-        <h3>📜 Tổng Giải Quẻ — Diễn Giải &amp; Hướng Giải Quyết</h3>
+        <h3>📜 Tổng Giải Quẻ — Diễn Giải Chi Tiết &amp; Hướng Giải Quyết</h3>
+        ${probHtml}
         <div class="ta-tg-grid">
           <div class="ta-tg-block ta-tg-narrative">
             <h4>📖 Giải thích bằng lời văn</h4>
@@ -401,6 +526,7 @@
             <ul>${stepsHtml}</ul>
           </div>
         </div>
+        ${structuredHtml}
       </div>
     `;
   }
@@ -415,9 +541,15 @@
         stance: currentStance,
         urgency: currentUrgency,
         extra_context: currentExtraContext,
+        partner_birth_year: currentPartnerYear,
+        compare_dates: currentCompareDates,
       }),
     });
     const data = await resp.json();
+    if (data.rejected) {
+      showRejectedNotice(data.message);
+      return;
+    }
     if (resp.ok) {
       currentTaData.analysis = data.analysis;
       renderInspectorAndConsult(currentTaData.chart, data.analysis);

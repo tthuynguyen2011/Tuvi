@@ -115,6 +115,7 @@
       <div class="card cach-cuc-box">
         <h3>✦ Tổng Quan Cách Cục &amp; Đặc Điểm Nổi Bật</h3>
         <div id="cach-cuc-list" class="cach-cuc-grid"></div>
+        <div id="tuvi-overall-summary" style="margin-top:14px;"></div>
       </div>
     </section>
 
@@ -230,8 +231,19 @@
             </select>
           </div>
           <div class="field">
-            <label for="ta-birth-year">Năm sinh người hỏi (tùy chọn)</label>
-            <input id="ta-birth-year" type="number" min="1900" max="2100" placeholder="VD: 1995" />
+            <label for="ta-birth-year">Năm sinh người hỏi / Chủ (tùy chọn)</label>
+            <input id="ta-birth-year" type="number" min="1900" max="2100" placeholder="VD: 1989" />
+          </div>
+          <div class="field">
+            <label for="ta-partner-year">Năm sinh đối tác / Khách (tùy chọn)</label>
+            <input id="ta-partner-year" type="number" min="1900" max="2100" placeholder="VD: 2003" />
+          </div>
+          <div class="field" style="grid-column: span 2;">
+            <label>So sánh 2 mốc thời gian dự kiến (tùy chọn — bỏ trống nếu chỉ xem giờ hiện tại)</label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <input id="ta-cmp-1" type="date" title="Mốc dự kiến 1" style="flex:1;min-width:140px;" />
+              <input id="ta-cmp-2" type="date" title="Mốc dự kiến 2" style="flex:1;min-width:140px;" />
+            </div>
           </div>
           <div class="field field-btn" style="display:flex;gap:8px;align-items:flex-end;">
             <button type="button" id="ta-btn-now" class="btn btn-light" style="width:auto;white-space:nowrap;">⏱ Giờ hiện tại</button>

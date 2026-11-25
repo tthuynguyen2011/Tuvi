@@ -316,6 +316,7 @@ function renderInspector(chiIdx) {
       <span class="score-pill ${scoreToneClass(pr.score)}">${pr.score}/100 • ${pr.rating}</span>
     </div>
     <p style="font-size:12px;color:var(--muted);margin:4px 0 8px">${pr.domain}</p>
+    ${pr.detailed_narrative ? `<div class="ta-verdict-box" style="margin-bottom:8px;">${mdBold(pr.detailed_narrative)}</div>` : ""}
     <div class="reading-block">
       <h4 class="h-cat">✦ Điểm Cát (Thế mạnh &amp; Cơ hội)</h4>
       <ul>${pr.cat_points.map((x) => `<li>${mdBold(x)}</li>`).join("")}</ul>
@@ -336,17 +337,37 @@ function renderCachCuc() {
   const list = currentData.report.cach_cuc;
   if (!list.length) {
     el.innerHTML = `<div class="cc-item">Lá số bình hòa, các bộ sao phân bổ đều, phát triển bền bỉ theo thời vận.</div>`;
-    return;
+  } else {
+    el.innerHTML = list
+      .map(
+        (c) => `
+      <div class="cc-item">
+        <div><strong>${c.name}</strong> <span class="score-pill tone-good">${c.type}</span></div>
+        <p style="margin:4px 0 0;color:var(--muted)">${c.desc}</p>
+      </div>`
+      )
+      .join("");
   }
-  el.innerHTML = list
-    .map(
-      (c) => `
-    <div class="cc-item">
-      <div><strong>${c.name}</strong> <span class="score-pill tone-good">${c.type}</span></div>
-      <p style="margin:4px 0 0;color:var(--muted)">${c.desc}</p>
-    </div>`
-    )
-    .join("");
+
+  const osEl = document.getElementById("tuvi-overall-summary");
+  const os = currentData.report.overall_summary;
+  if (osEl && os) {
+    const pillarsHtml = (os.pillars || []).map((p) => `<li>${mdBold(p)}</li>`).join("");
+    osEl.innerHTML = `
+      <div class="ta-tong-giai" style="margin-top:8px;">
+        <h3>📜 Tổng Luận Lá Số Trọn Đời Cho Đương Số</h3>
+        <div class="ta-tg-block ta-tg-narrative" style="margin-bottom:10px;">
+          <p>${mdBold(os.narrative)}</p>
+          ${os.year_outlook ? `<p style="margin-top:6px;">${mdBold(os.year_outlook)}</p>` : ""}
+        </div>
+        <div class="ta-tg-block ta-tg-resolution">
+          <h4>🧭 Luận Chi Tiết Các Trụ Cột Cuộc Đời</h4>
+          <ul>${pillarsHtml}</ul>
+        </div>
+        <div class="ta-prob-disclaimer" style="margin-top:8px;">⚠ ${os.disclaimer}</div>
+      </div>
+    `;
+  }
 }
 
 function renderAllPalaces() {
@@ -360,6 +381,7 @@ function renderAllPalaces() {
         <span class="score-pill ${scoreToneClass(pr.score)}">${pr.score}/100 • ${pr.rating}</span>
       </div>
       <p style="font-size:12px;color:var(--muted);margin:4px 0 8px">${pr.domain}</p>
+      ${pr.detailed_narrative ? `<div class="ta-verdict-box" style="margin-bottom:8px;">${mdBold(pr.detailed_narrative)}</div>` : ""}
       <div class="reading-block">
         <h4 class="h-cat">✦ Điểm Cát</h4>
         <ul>${pr.cat_points.map((x) => `<li>${mdBold(x)}</li>`).join("")}</ul>

@@ -448,6 +448,44 @@ body {
 .ta-tg-resolution ul { margin: 0; padding-left: 18px; color: #1e293b; }
 .ta-tg-resolution li { margin-bottom: 6px; }
 
+.ta-sr-sections { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.ta-sr-block {
+  background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 14px; font-size: 13px; line-height: 1.55;
+}
+.ta-sr-block h4 { margin: 0 0 6px; color: #7c2d12; font-size: 14px; }
+.ta-sr-block ul { margin: 4px 0 0; padding-left: 18px; }
+.ta-quote {
+  margin: 6px 0; padding: 6px 10px; background: #fffbeb; border-left: 3px solid #d97706;
+  font-style: italic; color: #78350f; border-radius: 4px;
+}
+.ta-cmp-table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12.5px; }
+.ta-cmp-table th, .ta-cmp-table td { border: 1px solid #cbd5e1; padding: 7px 8px; text-align: left; vertical-align: top; }
+.ta-cmp-table th { background: #f1f5f9; color: #1e293b; }
+.ta-cmp-table tr.tier-cat { background: #f0fdf4; }
+.ta-cmp-table tr.tier-can_trong { background: #fef2f2; }
+.ta-rejected-box {
+  background: #fef2f2; border: 2px solid #dc2626; border-radius: 8px; padding: 16px; color: #991b1b;
+}
+.ta-rejected-box h3 { margin: 0 0 8px; }
+
+.ta-prob-card {
+  border-radius: 8px; padding: 12px 14px; margin-bottom: 12px;
+  border: 1px solid #cbd5e1; background: #f8fafc;
+}
+.ta-prob-card.tier-cat { background: #f0fdf4; border-color: #86efac; }
+.ta-prob-card.tier-binh_hoa { background: #fffbeb; border-color: #fde68a; }
+.ta-prob-card.tier-can_trong { background: #fef2f2; border-color: #fecaca; }
+.ta-prob-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ta-prob-pct { font-size: 22px; font-weight: 800; color: #7c2d12; }
+.ta-prob-label { margin-left: 6px; font-weight: 700; color: #334155; }
+.ta-prob-bar { height: 10px; background: #e2e8f0; border-radius: 999px; overflow: hidden; margin: 8px 0; }
+.ta-prob-fill { height: 100%; background: linear-gradient(90deg, #b45309, #15803d); border-radius: 999px; }
+.ta-prob-factors { margin: 6px 0; padding-left: 18px; font-size: 12.5px; color: #334155; }
+.ta-prob-disclaimer {
+  margin-top: 8px; padding: 7px 10px; background: rgba(255,255,255,0.75);
+  border-left: 3px solid #b45309; border-radius: 4px; font-size: 12.5px; color: #78350f; font-weight: 600;
+}
+
 .ta-toan-detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
 .ta-toan-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; font-size: 13px; }
 .ta-toan-card h4 { margin: 0 0 6px; color: #1e293b; }
