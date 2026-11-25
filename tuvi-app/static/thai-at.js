@@ -15,6 +15,7 @@
   const svcBtns = document.querySelectorAll(".svc-btn");
   const paneTuvi = document.getElementById("service-tuvi");
   const paneThaiAt = document.getElementById("service-thai-at");
+  const paneNgayTot = document.getElementById("service-ngay-tot");
   const portalTitle = document.getElementById("portal-title");
   const portalSub = document.getElementById("portal-subtitle");
   const btnExport = document.getElementById("btn-export-docx");
@@ -23,13 +24,18 @@
     btn.addEventListener("click", () => {
       const target = btn.dataset.service;
       activeService = target;
+      window.__activeService = target;
       svcBtns.forEach((b) => b.classList.toggle("active", b === btn));
       paneTuvi.classList.toggle("active", target === "tuvi");
       paneThaiAt.classList.toggle("active", target === "thai-at");
+      if (paneNgayTot) paneNgayTot.classList.toggle("active", target === "ngay-tot");
 
       if (target === "thai-at") {
         portalTitle.textContent = "Thái Ất Thần Kinh";
         portalSub.textContent = "Gieo quẻ hỏi việc 72 Khối Âm/Dương • Thái Ất Nhân Mệnh & Luận quẻ tương tác";
+      } else if (target === "ngay-tot") {
+        portalTitle.textContent = "Chọn Ngày Tốt & Xuất Hành";
+        portalSub.textContent = "Tra cứu 12 Trực, 28 Tú, Giờ Hoàng Đạo, Hướng Hỷ/Tài Thần & Tìm ngày đẹp theo tuổi";
       } else {
         portalTitle.textContent = "Tử Vi Đẩu Số Toàn Thư";
         portalSub.textContent = "Lập lá số bản đồ an cung • Luận giải trọn đời • Điềm may/hung từng năm & Mốc cuộc đời";

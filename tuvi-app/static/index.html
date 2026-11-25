@@ -18,6 +18,7 @@
     <div class="service-switcher" role="tablist" aria-label="Chọn dịch vụ">
       <button type="button" class="svc-btn active" data-service="tuvi">🔮 Tử Vi Đẩu Số</button>
       <button type="button" class="svc-btn" data-service="thai-at">☯ Thái Ất Thần Kinh</button>
+      <button type="button" class="svc-btn" data-service="ngay-tot">📅 Chọn Ngày Tốt &amp; Xuất Hành</button>
     </div>
     <div class="topbar-actions">
       <button id="btn-export-docx" class="btn btn-secondary" type="button">⬇ Xuất File Word (.docx)</button>
@@ -333,7 +334,83 @@
     </main>
   </div><!-- /#service-thai-at -->
 
+  <!-- ==================== SERVICE 3: CHON NGAY TOT & XUAT HANH ==================== -->
+  <div id="service-ngay-tot" class="service-pane">
+    <main class="container">
+      <div class="ta-mode-bar card">
+        <button type="button" class="nt-mode-btn active" data-nt-mode="check">📆 Tra Cứu &amp; Chấm Điểm Một Ngày Cụ Thể</button>
+        <button type="button" class="nt-mode-btn" data-nt-mode="scan">🔍 Tìm Danh Sách Ngày Đẹp Theo Khoảng Thời Gian</button>
+      </div>
+
+      <!-- TAB 1: CHECK 1 DAY -->
+      <section id="nt-form-check-wrap" class="input-panel card">
+        <form id="nt-check-form" class="form-grid">
+          <div class="field">
+            <label for="nt-date">Chọn ngày (Dương lịch)</label>
+            <input id="nt-date" type="date" required />
+          </div>
+          <div class="field">
+            <label for="nt-purpose">Mục đích công việc</label>
+            <select id="nt-purpose">
+              <option value="chung">Tổng quát / Mọi việc</option>
+              <option value="xuat_hanh" selected>Xuất hành / Đi xa / Công tác</option>
+              <option value="giao_dich">Ký hợp đồng / Giao dịch / Tài chính</option>
+              <option value="khai_truong">Khai trương / Mở hàng / Nhậm chức</option>
+              <option value="cuoi_hoi">Cưới hỏi / Hỷ sự / Đính hôn</option>
+              <option value="dong_tho">Động thổ / Sửa chữa / Nhập trạch</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="nt-birth-year">Năm sinh người thực hiện (tùy chọn)</label>
+            <input id="nt-birth-year" type="number" min="1900" max="2100" placeholder="VD: 1989" />
+          </div>
+          <div class="field field-btn" style="display:flex;gap:8px;align-items:flex-end;">
+            <button type="button" id="nt-btn-today" class="btn btn-light" style="width:auto;">⏱ Hôm nay</button>
+            <button type="submit" class="btn btn-primary">📅 Xem Ngày, Giờ &amp; Hướng Tốt</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- TAB 2: SCAN RANGE -->
+      <section id="nt-form-scan-wrap" class="input-panel card" style="display:none;">
+        <form id="nt-scan-form" class="form-grid">
+          <div class="field">
+            <label for="nts-start">Từ ngày (DL)</label>
+            <input id="nts-start" type="date" required />
+          </div>
+          <div class="field">
+            <label for="nts-end">Đến ngày (DL)</label>
+            <input id="nts-end" type="date" required />
+          </div>
+          <div class="field">
+            <label for="nts-purpose">Mục đích công việc</label>
+            <select id="nts-purpose">
+              <option value="chung">Tổng quát / Mọi việc</option>
+              <option value="xuat_hanh" selected>Xuất hành / Đi xa / Công tác</option>
+              <option value="giao_dich">Ký hợp đồng / Giao dịch / Tài chính</option>
+              <option value="khai_truong">Khai trương / Mở hàng / Nhậm chức</option>
+              <option value="cuoi_hoi">Cưới hỏi / Hỷ sự / Đính hôn</option>
+              <option value="dong_tho">Động thổ / Sửa chữa / Nhập trạch</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="nts-birth-year">Năm sinh (tùy chọn)</label>
+            <input id="nts-birth-year" type="number" min="1900" max="2100" placeholder="VD: 1989" />
+          </div>
+          <div class="field field-btn">
+            <button type="submit" class="btn btn-primary">🔍 Tìm Top Ngày Đẹp Nhất</button>
+          </div>
+        </form>
+      </section>
+
+      <div id="ngay-tot-result" class="card" style="margin-top:14px;">
+        <div class="empty-state">Chọn ngày hoặc khoảng thời gian ở trên và bấm <strong>Xem Ngày</strong> để tra cứu Trực, 28 Tú, Giờ Hoàng Đạo và Hướng Xuất Hành.</div>
+      </div>
+    </main>
+  </div><!-- /#service-ngay-tot -->
+
   <script src="app.js"></script>
   <script src="thai-at.js"></script>
+  <script src="ngay-tot.js"></script>
 </body>
 </html>

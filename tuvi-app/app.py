@@ -13,6 +13,8 @@ from docx_exporter import export_to_docx_bytes
 from thai_at_engine import build_divination_chart, build_nhan_menh_chart
 from thai_at_analyzer import analyze_divination, analyze_nhan_menh, check_querent_language
 from thai_at_exporter import export_thai_at_to_docx_bytes
+from ngay_tot_engine import evaluate_day, scan_good_days
+from ngay_tot_exporter import export_ngay_tot_to_docx_bytes
 
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 
@@ -39,6 +41,8 @@ class TuViHandler(SimpleHTTPRequestHandler):
             payload = self._read_json()
             if self.path.startswith("/api/thai-at/"):
                 return self._handle_thai_at(payload)
+            if self.path.startswith("/api/ngay-tot/"):
+                return self._handle_ngay_tot(payload)
 
             name = payload.get("name", "Đương Số").strip() or "Đương Số"
             gender = payload.get("gender", "Nữ")
@@ -145,6 +149,51 @@ class TuViHandler(SimpleHTTPRequestHandler):
                 return self._send_json({"error": "Thiếu dữ liệu xuất báo cáo"}, status=400)
             docx_bytes = export_thai_at_to_docx_bytes(chart, analysis)
             safe_name = urllib.parse.quote("Que_Thai_At_Than_Kinh.docx")
+            self.send_response(200)
+            self.send_header(
+                "Content-Type",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            )
+            self.send_header("Content-Disposition", f"attachment; filename*=UTF-8''{safe_name}")
+            self.send_header("Content-Length", str(len(docx_bytes)))
+            self.end_headers()
+            self.wfile.write(docx_bytes)
+        else:
+            self._send_json({"error": "Not found"}, status=404)
+
+    def _handle_ngay_tot(self, payload):
+        purpose = payload.get("purpose", "chung")
+        by = payload.get("birth_year")
+        birth_year = int(by) if by else None
+
+        if self.path == "/api/ngay-tot/check":
+            res = evaluate_day(
+                dd=int(payload.get("day", 25)),
+                mm=int(payload.get("month", 11)),
+                yy=int(payload.get("year", 2026)),
+                purpose=purpose,
+                birth_year=birth_year,
+            )
+            self._send_json({"day_report": res})
+        elif self.path == "/api/ngay-tot/scan":
+            items = scan_good_days(
+                start_dd=int(payload.get("start_day", 25)),
+                start_mm=int(payload.get("start_month", 11)),
+                start_yy=int(payload.get("start_year", 2026)),
+                end_dd=int(payload.get("end_day", 10)),
+                end_mm=int(payload.get("end_month", 12)),
+                end_yy=int(payload.get("end_year", 2026)),
+                purpose=purpose,
+                birth_year=birth_year,
+                limit=int(payload.get("limit", 12)),
+            )
+            self._send_json({"days": items})
+        elif self.path == "/api/ngay-tot/export-docx":
+            docx_bytes = export_ngay_tot_to_docx_bytes(
+                report=payload.get("day_report"),
+                scan_list=payload.get("days"),
+            )
+            safe_name = urllib.parse.quote("Chon_Ngay_Tot_Xuat_Hanh.docx")
             self.send_response(200)
             self.send_header(
                 "Content-Type",
