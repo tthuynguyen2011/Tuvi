@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 const SERVICES = [
-  { href: "/", id: "tuvi", label: "Tử Vi Đẩu Số", glyph: "紫" },
+  { href: "/tu-vi", id: "tuvi", label: "Tử Vi Đẩu Số", glyph: "紫" },
   { href: "/thai-at", id: "thai-at", label: "Thái Ất Thần Kinh", glyph: "☯" },
 ] as const;
 
@@ -10,6 +10,13 @@ export default function SiteNav({ active }: { active: (typeof SERVICES)[number][
   return (
     <nav aria-label="Chọn dịch vụ" className="no-print mx-auto max-w-7xl px-5">
       <div className="flex gap-1 border-b border-white/10">
+        <Link
+          href="/"
+          className="-mb-px mr-1 flex items-center gap-1.5 border-b-2 border-transparent px-3 py-2.5 text-sm font-medium text-white/55 transition hover:text-white/90"
+        >
+          <span aria-hidden>←</span>
+          Trang chủ
+        </Link>
         {SERVICES.map((s) => {
           const on = s.id === active;
           return (

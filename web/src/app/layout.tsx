@@ -16,9 +16,9 @@ const serif = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Tử Vi Đẩu Số — Lập Lá Số & Luận Giải Trọn Đời",
+  title: "Tử Vi Đẩu Số & Thái Ất Thần Kinh",
   description:
-    "Lập lá số Tử Vi 12 cung chuẩn truyền thống, luận giải trọn đời, điềm may – điềm hung từng năm và những mốc quan trọng trong cuộc đời. Miễn phí, xử lý ngay trên trình duyệt.",
+    "Lập lá số Tử Vi, luận giải trọn đời và gieo quẻ Thái Ất hỏi việc. Miễn phí, xử lý ngay trên trình duyệt.",
 };
 
 export const viewport: Viewport = {

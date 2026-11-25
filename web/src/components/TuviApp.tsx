@@ -139,7 +139,7 @@ export default function TuviApp() {
     setSubmitted(null);
     setEditing(false);
     setError(null);
-    window.history.replaceState(null, "", "/");
+    window.history.replaceState(null, "", window.location.pathname);
   };
 
   const onSubmit = () => {
