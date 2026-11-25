@@ -80,6 +80,11 @@ def test_divination_and_consult_and_docx():
     assert 15 <= sp["percent"] <= 92
     assert "tham khảo" in sp["disclaimer"]
 
+    # Follow-up question about timing
+    a_time = analyze_divination(chart, stance="chu", urgency="gap", extra_context="thời điểm nào sẽ thuận lợi cho giao dịch")
+    assert a_time["followup_answer"]["has_answer"] is True
+    assert len(a_time["followup_answer"]["best_windows"]) == 3
+
     # Moderation checks
     assert check_querent_language("Xin hỏi về giao dịch chuyển tiền quốc tế")["ok"] is True
     assert check_querent_language("Nói bậy vãi lồn")["ok"] is False

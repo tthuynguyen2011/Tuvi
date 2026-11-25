@@ -309,9 +309,13 @@
         )
         .join("");
 
+      const fa = analysis.followup_answer;
+      const faHtml = fa && fa.has_answer ? renderFollowupAnswerHtml(fa) : "";
+
       insp.innerHTML = `
         <h3>☯ Kết Luận Quẻ Tương Tác</h3>
         <p class="sub">${escapeHtml(analysis.topic_label)}</p>
+        ${faHtml}
         <div class="ta-verdict-box">${formatMdBold(analysis.stance_verdict)}</div>
         <p style="margin:8px 0;">${formatMdBold(analysis.direction_advice)}</p>
         ${analysis.querent_note ? `<p style="margin:8px 0;">${formatMdBold(analysis.querent_note)}</p>` : ""}
@@ -342,12 +346,13 @@
         <p class="sub">Chọn vị thế thực tế và mức độ gấp gáp của bạn — hệ thống sẽ cập nhật ngay lời luận Chủ/Khách &amp; khuyến nghị hành động.</p>
         ${promptsHtml}
         <div class="ta-prompt-group" style="margin-top:10px;">
-          <label for="ta-extra-ctx"><strong>Thêm chi tiết hoàn cảnh (tùy chọn):</strong></label>
+          <label for="ta-extra-ctx"><strong>Thêm chi tiết hoàn cảnh hoặc hỏi tiếp (tùy chọn):</strong></label>
           <div style="display:flex;gap:8px;margin-top:4px;">
-            <input id="ta-extra-ctx" type="text" value="${escapeHtml(currentExtraContext)}" placeholder="Ví dụ: Đối tác đang muốn ký gấp trong tuần..." style="flex:1;padding:8px;border:1px solid #cbd5e1;border-radius:6px;" />
+            <input id="ta-extra-ctx" type="text" value="${escapeHtml(currentExtraContext)}" placeholder="Ví dụ: Thời điểm nào sẽ thuận lợi cho giao dịch? / Cần lưu ý rủi ro gì?" style="flex:1;padding:8px;border:1px solid #cbd5e1;border-radius:6px;" />
             <button type="button" id="ta-btn-refine" class="btn btn-primary" style="width:auto;">Cập nhật luận giải</button>
           </div>
         </div>
+        ${faHtml}
         <div class="ta-toan-detail-grid" style="margin-top:14px;">
           <div class="ta-toan-card">
             <h4>Toán Chủ: ${analysis.chu_eval.toan} — ${escapeHtml(analysis.chu_eval.level)}</h4>
@@ -370,9 +375,21 @@
           await refineConsultation();
         });
       });
-      document.getElementById("ta-btn-refine").addEventListener("click", async () => {
+      const triggerRefine = async () => {
         currentExtraContext = document.getElementById("ta-extra-ctx").value.trim();
+        const btn = document.getElementById("ta-btn-refine");
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = "Đang cập nhật...";
+        }
         await refineConsultation();
+      };
+      document.getElementById("ta-btn-refine").addEventListener("click", triggerRefine);
+      document.getElementById("ta-extra-ctx").addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter") {
+          ev.preventDefault();
+          triggerRefine();
+        }
       });
     } else {
       // NHAN MENH
@@ -416,6 +433,36 @@
         ${renderSummaryNarrativeHtml(analysis.summary_narrative, analysis.structured_report, analysis.success_probability)}
       `;
     }
+  }
+
+  function renderFollowupAnswerHtml(fa) {
+    let winHtml = "";
+    if (fa.best_windows && fa.best_windows.length) {
+      const rows = fa.best_windows
+        .map(
+          (w) => `
+          <tr class="tier-${w.tier}">
+            <td><strong>${escapeHtml(w.label)}</strong><br><small>${escapeHtml(w.can_chi_day)}</small></td>
+            <td>${escapeHtml(w.don_cuc)}</td>
+            <td><strong>${escapeHtml(w.rating)}</strong></td>
+            <td>${escapeHtml(w.recommendation)}</td>
+          </tr>`
+        )
+        .join("");
+      winHtml = `
+        <table class="ta-cmp-table" style="margin-top:8px;">
+          <thead><tr><th>Thời điểm gợi ý</th><th>Độn / Cục</th><th>Đánh giá</th><th>Khuyến nghị</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+    }
+    return `
+      <div class="ta-followup-answer">
+        <div class="ta-fa-head">✅ Phản Hồi Câu Hỏi Bổ Sung: <em>"${escapeHtml(fa.question)}"</em></div>
+        <p>${formatMdBold(fa.answer)}</p>
+        ${winHtml}
+      </div>
+    `;
   }
 
   function renderSummaryNarrativeHtml(sn, sr, sp) {

@@ -456,6 +456,9 @@ def analyze_divination(
     success_probability = compute_success_probability(
         chu_eval, khach_eval, balance, patterns, stance=stance, querent_note=querent_note
     )
+    followup_answer = _answer_followup_question(
+        chart, extra_context, chu_eval, khach_eval, balance, patterns, stance, urgency, success_probability
+    )
     structured_report = _build_structured_report(
         chart, chu_eval, khach_eval, balance, patterns,
         stance, stance_verdict, topic_label, topic_advice,
@@ -475,6 +478,7 @@ def analyze_divination(
         "querent_note": querent_note,
         "partner": partner_info,
         "extra_context_note": f"Ghi chú ngữ cảnh đã xét: {extra_context}" if extra_context else "",
+        "followup_answer": followup_answer,
         "followup_prompts": followup_prompts,
         "comparison": comparison,
         "success_probability": success_probability,
@@ -482,6 +486,90 @@ def analyze_divination(
         "summary_narrative": _build_divination_narrative(
             chart, chu_eval, khach_eval, balance, patterns, stance, stance_verdict, topic_advice, at_dir, ngu_phuc_dir, querent_note, urgency
         ),
+    }
+
+
+def _find_best_upcoming_windows(base_chart: dict) -> list:
+    """Quét 7 ngày tiếp theo (theo ngày hiện tại của quẻ) để tìm các mốc thời gian thuận lợi nhất."""
+    s = base_chart["solar"]
+    base_jd = lc.jd_from_date(s["day"], s["month"], s["year"])
+    candidates = []
+    for offset in range(0, 7):
+        dd, mm, yy = lc.jd_to_date(base_jd + offset)
+        sub = build_divination_chart(
+            dd=dd, mm=mm, yy=yy, hour_24=s["hour_24"],
+            ke_mode=base_chart.get("ke_mode", "thoi_ke"),
+            question=base_chart.get("question", ""),
+            topic=base_chart.get("topic", "chung"),
+        )
+        scored = _score_chart_timing(sub)
+        candidates.append(scored)
+    candidates.sort(key=lambda x: x["score"], reverse=True)
+    return candidates[:3]
+
+
+def _answer_followup_question(
+    chart: dict,
+    extra_context: str,
+    chu_eval: dict,
+    khach_eval: dict,
+    balance: dict,
+    patterns: list,
+    stance: str,
+    urgency: str,
+    success_probability: dict,
+) -> dict:
+    """Phân tích và trả lời trực tiếp câu hỏi / ngữ cảnh bổ sung của người gieo quẻ."""
+    if not extra_context or not extra_context.strip():
+        return {"has_answer": False, "question": "", "answer": "", "best_windows": []}
+
+    q_lower = extra_context.lower()
+    b = chart["board"]
+    best_windows = []
+
+    is_time_q = any(k in q_lower for k in ("thời điểm", "thoi diem", "khi nào", "khi nao", "ngày nào", "ngay nao", "giờ nào", "gio nao", "lúc nào", "luc nao", "bao giờ"))
+    is_dir_q = any(k in q_lower for k in ("hướng", "huong", "phương", "phuong"))
+    is_risk_q = any(k in q_lower for k in ("rủi ro", "rui ro", "lưu ý", "luu y", "trở ngại", "tro ngai", "ngại", "khó khăn"))
+
+    parts = []
+    if is_time_q:
+        best_windows = _find_best_upcoming_windows(chart)
+        top = best_windows[0]
+        parts.append(
+            f"Về câu hỏi thời điểm thuận lợi: Quét khí số Thái Ất trong 7 ngày tới (cùng khung giờ {chart['solar']['hour_24']}h), "
+            f"mốc nổi bật nhất là **{top['label']}** ({top['can_chi_day']}, {top['don_cuc']}) — đánh giá **{top['rating']}** "
+            f"(Toán Chủ {top['chu_toan']}, Toán Khách {top['khach_toan']}; {top['recommendation']})."
+        )
+        if len(best_windows) > 1:
+            others = "; ".join(f"{w['label']} ({w['rating']})" for w in best_windows[1:])
+            parts.append(f"Các mốc dự phòng khả quan tiếp theo: {others}.")
+    elif is_dir_q:
+        parts.append(
+            f"Về phương hướng hành sự: Nên ưu tiên hướng **{PALACE_DIRECTION[b['ngu_phuc_cung']]}** (cung Ngũ Phúc tại {b['ngu_phuc_cung']}) "
+            f"hoặc hướng **{PALACE_DIRECTION[b['thai_at_cung']]}** (Thái Ất tại {b['thai_at_cung']}); "
+            f"hạn chế xuất hành/đối diện trực tiếp về hướng **{PALACE_DIRECTION[b['thuy_kich_cung']]}** (nơi Thủy Kích đóng)."
+        )
+    elif is_risk_q:
+        warns = [p["name"] + ": " + p["detail"] for p in patterns if p["severity"] != "cat"]
+        if warns:
+            parts.append("Những điểm cần lưu ý trọng tâm trên bàn quẻ: " + " | ".join(warns))
+        else:
+            parts.append("Bàn quẻ hiện không có cách cục xung phá nặng; chỉ cần giữ đúng quy trình và minh bạch giấy tờ.")
+    else:
+        parts.append(
+            f"Xét theo ngữ cảnh bạn vừa bổ sung (\"{extra_context}\"), với thế đứng hiện tại ({stance.upper() if stance != 'auto' else 'Tổng quan'}) "
+            f"và tỷ lệ thuận lợi tham khảo **{success_probability['percent']}% ({success_probability['label']})**, "
+            f"{balance['summary'].replace('**', '')}"
+        )
+
+    parts.append(
+        "Lưu ý: Kết quả trên mang tính tham khảo theo khí số Thái Ất; khi thực hiện giao dịch/công việc thực tế bạn vẫn cần soi xét kỹ hồ sơ và điều kiện khách quan."
+    )
+    return {
+        "has_answer": True,
+        "question": extra_context,
+        "answer": " ".join(parts),
+        "best_windows": best_windows,
     }
 
 
